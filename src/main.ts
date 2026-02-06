@@ -56,6 +56,42 @@ async function main() {
       text-decoration: underline;
       text-underline-offset: 0.15em;
     }
+
+    /* Bouten over + underline: text-emphasis dots above + solid underline */
+    span.ls-ruby-bouten.ls-ruby-bouten-over.ls-ruby-underline {
+      text-emphasis: filled dot;
+      -webkit-text-emphasis: filled dot;
+      text-emphasis-position: over right;
+      -webkit-text-emphasis-position: over right;
+      text-decoration: underline;
+      text-underline-offset: 0.15em;
+    }
+
+    /* Bouten under + underline: dotted underline becomes solid */
+    span.ls-ruby-bouten.ls-ruby-bouten-under.ls-ruby-underline {
+      text-decoration: underline;
+      text-underline-offset: 0.15em;
+    }
+
+    /* Mixed: ruby annotation + bouten over */
+    ruby.ls-ruby-mixed.ls-ruby-bouten-over {
+      text-emphasis: filled dot;
+      -webkit-text-emphasis: filled dot;
+      text-emphasis-position: over right;
+      -webkit-text-emphasis-position: over right;
+    }
+
+    /* Mixed: ruby annotation + bouten under (dotted underline) */
+    ruby.ls-ruby-mixed.ls-ruby-bouten-under {
+      text-decoration: underline dotted;
+      text-underline-offset: 0.15em;
+    }
+
+    /* Mixed: ruby annotation + underline */
+    ruby.ls-ruby-mixed.ls-ruby-underline {
+      text-decoration: underline;
+      text-underline-offset: 0.15em;
+    }
   `);
 
   // ---------------------------------------------------------------------------
