@@ -88,6 +88,22 @@ function renderUnderline(base: string): string {
   return `<span class="ls-ruby-underline">${unescape(base)}</span>`;
 }
 
+/**
+ * Render mixed: ruby annotation on one side + bouten/underline on the other
+ */
+function renderRubyWithBouten(base: string, rubyText: string, rubyOp: RubyOp, boutenOp: RubyOp): string {
+  const safeBase = unescape(base);
+  const rubyPos = rubyOp === "^^" ? "ls-ruby-over" : "ls-ruby-under";
+  const boutenPos = boutenOp === "^^" ? "over" : "under";
+  return `<ruby class="ls-ruby ls-ruby-mixed ${rubyPos} ls-ruby-bouten-${boutenPos}">${safeBase}<rp>(</rp><rt>${rubyText}</rt><rp>)</rp></ruby>`;
+}
+
+function renderRubyWithUnderline(base: string, rubyText: string, rubyOp: RubyOp): string {
+  const safeBase = unescape(base);
+  const rubyPos = rubyOp === "^^" ? "ls-ruby-over" : "ls-ruby-under";
+  return `<ruby class="ls-ruby ls-ruby-mixed ${rubyPos} ls-ruby-underline">${safeBase}<rp>(</rp><rt>${rubyText}</rt><rp>)</rp></ruby>`;
+}
+
 function renderRuby(base: string, op: RubyOp, levels: string[]): string {
   const safeBase = unescape(base);
   const capped = levels.slice(0, 2);
@@ -212,6 +228,7 @@ export function rubyToHTML(input: string): string {
     // --- Chained second operator (mixed only) ---
     let finalEnd = annEnd + 1;
     let rawAnn2: string | null = null;
+    let op2: RubyOp | null = null;
     const next = annEnd + 1;
 
     if (
@@ -228,40 +245,87 @@ export function rubyToHTML(input: string): string {
           const candidate = input.slice(annStart2, annEnd2);
           if (candidate.length > 0) {
             rawAnn2 = candidate;
+            op2 = nextOp;
             finalEnd = annEnd2 + 1;
           }
         }
       }
     }
 
-    // --- Underline ---
-    if (rawAnn === UNDERLINE_PATTERN && op === "^_") {
+    // --- Special pattern detection ---
+    const isBouten1 = rawAnn === BOUTEN_PATTERN;
+    const isBouten2 = rawAnn2 === BOUTEN_PATTERN;
+    const isUnderline1 = rawAnn === UNDERLINE_PATTERN && op === "^_";
+    const isUnderline2 = rawAnn2 === UNDERLINE_PATTERN && op2 === "^_";
+    const isSpecial1 = isBouten1 || isUnderline1;
+    const isSpecial2 = isBouten2 || isUnderline2;
+
+    // --- Case 1: BOTH are special patterns ---
+    if (isSpecial1 && isSpecial2) {
       out += input.slice(consumedFrom, baseStart);
-      out += renderUnderline(baseHtml);
+      
+      // Bouten + Underline combination
+      if ((isBouten1 && isUnderline2) || (isUnderline1 && isBouten2)) {
+        const boutenOp = isBouten1 ? op : op2;
+        out += `<span class="ls-ruby-bouten ls-ruby-bouten-${boutenOp === "^^" ? "over" : "under"} ls-ruby-underline">${unescape(baseHtml)}</span>`;
+      }
+      // Bouten + Bouten (both dots)
+      else if (isBouten1 && isBouten2) {
+        out += renderBoutenBoth(baseHtml);
+      }
+      // Underline + Underline (just one underline)
+      else {
+        out += renderUnderline(baseHtml);
+      }
+      
+      i = finalEnd;
+      continue;
+    }
+
+    // --- Case 2: ONLY first is special pattern (no chain) ---
+    if (isSpecial1 && !rawAnn2) {
+      out += input.slice(consumedFrom, baseStart);
+      
+      if (isBouten1) {
+        out += renderBouten(baseHtml, op);
+      } else {
+        out += renderUnderline(baseHtml);
+      }
+      
       i = annEnd + 1;
       continue;
     }
 
-    // --- Bouten ---
-    const isBouten1 = rawAnn === BOUTEN_PATTERN;
-    const isBouten2 = rawAnn2 === BOUTEN_PATTERN;
-
-    if (isBouten1 && isBouten2) {
+    // --- Case 3: Mixed special pattern + regular ruby text ---
+    if (rawAnn2 && (isSpecial1 || isSpecial2)) {
       out += input.slice(consumedFrom, baseStart);
-      out += renderBoutenBoth(baseHtml);
+      
+      // One is special, one is regular text
+      if (isSpecial1 && !isSpecial2) {
+        // First is special (bouten/underline), second is ruby text
+        const rubyText = unescape(rawAnn2);
+        if (isBouten1) {
+          out += renderRubyWithBouten(baseHtml, rubyText, op2!, op);
+        } else {
+          out += renderRubyWithUnderline(baseHtml, rubyText, op2!);
+        }
+      } else if (!isSpecial1 && isSpecial2) {
+        // First is ruby text, second is special (bouten/underline)
+        const rubyText = unescape(rawAnn);
+        if (isBouten2) {
+          out += renderRubyWithBouten(baseHtml, rubyText, op, op2!);
+        } else {
+          out += renderRubyWithUnderline(baseHtml, rubyText, op);
+        }
+      }
+      
       i = finalEnd;
       continue;
     }
-    if (isBouten1) {
-      out += input.slice(consumedFrom, baseStart);
-      out += renderBouten(baseHtml, op);
-      i = finalEnd;
-      continue;
-    }
 
-    // --- Ruby levels ---
+    // --- Case 4: Regular ruby (both are normal text) ---
     const levels = splitByUnescapedPipe(rawAnn).map(unescape);
-    if (rawAnn2 && !isBouten2) {
+    if (rawAnn2) {
       levels.push(...splitByUnescapedPipe(rawAnn2).map(unescape));
     }
 
@@ -433,12 +497,23 @@ function htmlElementsToMacro(root: HTMLElement): void {
 
   for (const span of Array.from(root.querySelectorAll("span.ls-ruby-bouten"))) {
     const base = (span.textContent ?? "").trim();
+    const isOver = span.classList.contains("ls-ruby-bouten-over");
     const isUnder = span.classList.contains("ls-ruby-bouten-under");
-    const pos = isUnder ? ", under" : "";
-    span.replaceWith(root.ownerDocument.createTextNode(`{{renderer :ruby, ${base}, ..${pos}}}`));
+    const isUnderline = span.classList.contains("ls-ruby-underline");
+    
+    // Note: Macro format doesn't support bouten + underline combo directly,
+    // so we convert to the primary effect (bouten)
+    if (isUnderline) {
+      // For bouten + underline, prioritize the bouten in macro format
+      const pos = isUnder ? ", under" : "";
+      span.replaceWith(root.ownerDocument.createTextNode(`{{renderer :ruby, ${base}, ..${pos}}}`));
+    } else {
+      const pos = isUnder ? ", under" : "";
+      span.replaceWith(root.ownerDocument.createTextNode(`{{renderer :ruby, ${base}, ..${pos}}}`));
+    }
   }
 
-  for (const span of Array.from(root.querySelectorAll("span.ls-ruby-underline"))) {
+  for (const span of Array.from(root.querySelectorAll("span.ls-ruby-underline:not(.ls-ruby-bouten)"))) {
     const base = (span.textContent ?? "").trim();
     span.replaceWith(root.ownerDocument.createTextNode(`{{renderer :ruby, ${base}, .-, under}}`));
   }
@@ -529,7 +604,14 @@ export function rubyHtmlToMarkup(html: string): string {
     if (!base) continue;
     const isOver = span.classList.contains("ls-ruby-bouten-over");
     const isUnder = span.classList.contains("ls-ruby-bouten-under");
-    if (isOver && isUnder) {
+    const isUnderline = span.classList.contains("ls-ruby-underline");
+    
+    // Bouten + Underline combinations
+    if (isUnderline && isOver) {
+      span.replaceWith(doc.createTextNode(`[${base}]^^(..)^_(.-)`));
+    } else if (isUnderline && isUnder) {
+      span.replaceWith(doc.createTextNode(`[${base}]^_(.-)^^(..)`));
+    } else if (isOver && isUnder) {
       span.replaceWith(doc.createTextNode(`[${base}]^^(..)^_(..)`));
     } else if (isUnder) {
       span.replaceWith(doc.createTextNode(`[${base}]^_(..)`));
@@ -538,7 +620,7 @@ export function rubyHtmlToMarkup(html: string): string {
     }
   }
 
-  for (const span of Array.from(root.querySelectorAll("span.ls-ruby-underline"))) {
+  for (const span of Array.from(root.querySelectorAll("span.ls-ruby-underline:not(.ls-ruby-bouten)"))) {
     const base = (span.textContent ?? "").trim();
     span.replaceWith(doc.createTextNode(`[${base}]^_(.-)`));
   }

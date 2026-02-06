@@ -15,8 +15,16 @@ Supports various ruby annotation styles (see [full showcase](./assets/logseq_tes
 - `[北京]^^(ペキン|Beijing)` — two-level annotations (above + below)
 - `[base]^^(over)^_(under)` — chained annotations
 - `[漢字]^^(..)` — bouten (emphasis dots) above
-- `[漢字]^_(..)` — underdots
+- `[漢字]^_(..)` — underdots (dotted underline)
 - `[base]^_(.-)` — underline
+- `[漢字]^^(..)^_(..)` — bouten above + underdots below
+- `[漢字]^^(..)^_(.-)` — bouten above + solid underline
+- `[漢字]^_(.-)^^(..)` — underline + bouten above
+- `[漢字]^^(a)^_(..)` — ruby "a" above + underdots below (mixed)
+- `[漢字]^^(..)^_(s)` — bouten above + ruby "s" below (mixed)
+- `[漢字]^^(a)^_(.-)` — ruby "a" above + underline (mixed)
+
+**Mixed patterns**: You can combine regular ruby text with special patterns (bouten `..` or underline `.-`). The special pattern applies its visual effect while the regular text renders as ruby annotation on the opposite side.
 
 ### Macro Syntax
 

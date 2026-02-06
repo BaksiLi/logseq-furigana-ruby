@@ -45,6 +45,12 @@ describe("rubyToHTML — under", () => {
   it("[base]^_(ruby)", () => {
     expect(rubyToHTML("[base]^_(ruby)")).toContain("ls-ruby-under");
   });
+  it("[漢字]^_(s) single char", () => {
+    const r = rubyToHTML("[漢字]^_(s)");
+    expect(r).toContain("<ruby");
+    expect(r).toContain("ls-ruby-under");
+    expect(r).toContain("<rt>s</rt>");
+  });
 });
 
 // ---------------------------------------------------------------------------
@@ -83,6 +89,50 @@ describe("rubyToHTML — chaining", () => {
     const r = rubyToHTML("[base]^^(a)^^(b)");
     expect(r).not.toContain("ls-ruby-double");
   });
+  it("mixed: ruby over + bouten under ^^(a)^_(..)", () => {
+    const r = rubyToHTML("[漢字]^^(a)^_(..)");
+    expect(r).toContain("<ruby");
+    expect(r).toContain("<rt>a</rt>");
+    expect(r).toContain("ls-ruby-mixed");
+    expect(r).toContain("ls-ruby-bouten-under");
+    expect(r).not.toContain("ls-ruby-double");
+  });
+  it("mixed: ruby over + underline ^^(a)^_(.-)", () => {
+    const r = rubyToHTML("[漢字]^^(a)^_(.-)");
+    expect(r).toContain("<ruby");
+    expect(r).toContain("<rt>a</rt>");
+    expect(r).toContain("ls-ruby-mixed");
+    expect(r).toContain("ls-ruby-underline");
+    expect(r).not.toContain("ls-ruby-double");
+  });
+  it("mixed: ruby + ruby ^^(a)^_(s)", () => {
+    const r = rubyToHTML("[漢字]^^(a)^_(s)");
+    expect(r).toContain("<ruby");
+    expect(r).toContain("<rt>a</rt>");
+    expect(r).toContain("<rt>s</rt>");
+    expect(r).toContain("ls-ruby-double");
+  });
+  it("mixed: bouten over + ruby under ^^(..)^_(s)", () => {
+    const r = rubyToHTML("[漢字]^^(..)^_(s)");
+    expect(r).toContain("<ruby");
+    expect(r).toContain("<rt>s</rt>");
+    expect(r).toContain("ls-ruby-mixed");
+    expect(r).toContain("ls-ruby-bouten-over");
+    expect(r).not.toContain("ls-ruby-double");
+  });
+  it("mixed: ruby under + bouten over ^_(s)^^(..)", () => {
+    const r = rubyToHTML("[漢字]^_(s)^^(..)");
+    expect(r).toContain("<ruby");
+    expect(r).toContain("<rt>s</rt>");
+    expect(r).toContain("ls-ruby-mixed");
+    expect(r).toContain("ls-ruby-bouten-over");
+  });
+  it("mixed: underline + bouten over ^_(.-)^^(..)", () => {
+    const r = rubyToHTML("[漢字]^_(.-)^^(..)");
+    expect(r).toContain("ls-ruby-bouten");
+    expect(r).toContain("ls-ruby-underline");
+    expect(r).toContain("ls-ruby-bouten-over");
+  });
 });
 
 // ---------------------------------------------------------------------------
@@ -112,6 +162,17 @@ describe("rubyToHTML — bouten", () => {
   it("single dot NOT bouten", () => {
     expect(rubyToHTML("[漢字]^^(.)")).toContain("<ruby");
   });
+  it("single dot in chain", () => {
+    const r = rubyToHTML("[aa]^^(bb)^_(.)");
+    expect(r).not.toContain("ls-ruby-bouten");
+    expect(r).toContain("<ruby");
+    expect(r).toContain("ls-ruby-double");
+  });
+  it("single dot standalone", () => {
+    const r = rubyToHTML("[aa]^_(.)");
+    expect(r).not.toContain("ls-ruby-bouten");
+    expect(r).toContain("<ruby");
+  });
 });
 
 // ---------------------------------------------------------------------------
@@ -125,6 +186,16 @@ describe("rubyToHTML — underline", () => {
   });
   it("only ^_ operator", () => {
     expect(rubyToHTML("[base]^^(.-)")).toContain("<ruby");
+  });
+  it("bouten + underline chain ^^(..)^_(.-)", () => {
+    const r = rubyToHTML("[漢字]^^(..)^_(.-)" );
+    expect(r).toContain("ls-ruby-bouten");
+    expect(r).toContain("ls-ruby-underline");
+  });
+  it("reverse chain underline + bouten ^_(.-)^^(..)", () => {
+    const r = rubyToHTML("[漢字]^_(.-)^^(..)");
+    expect(r).toContain("ls-ruby-bouten");
+    expect(r).toContain("ls-ruby-underline");
   });
 });
 
@@ -198,6 +269,16 @@ describe("anyToMarkup", () => {
   it("HTML → markup", () => {
     expect(anyToMarkup('<ruby class="ls-ruby ls-ruby-over">漢字<rp>(</rp><rt>かんじ</rt><rp>)</rp></ruby>')).toBe(
       "[漢字]^^(かんじ)"
+    );
+  });
+  it("HTML bouten + underline → markup", () => {
+    expect(anyToMarkup('<span class="ls-ruby-bouten ls-ruby-bouten-over ls-ruby-underline">漢字</span>')).toBe(
+      "[漢字]^^(..)^_(.-)"
+    );
+  });
+  it("HTML reverse bouten + underline → markup", () => {
+    expect(anyToMarkup('<span class="ls-ruby-bouten ls-ruby-bouten-under ls-ruby-underline">漢字</span>')).toBe(
+      "[漢字]^_(.-)^^(..)"
     );
   });
 });
