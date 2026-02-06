@@ -1,10 +1,11 @@
 # logseq-furigana-ruby
 
-Logseq plugin for ruby/furigana using the `^^()` syntax from the [Markdown Ruby proposal](https://blog.baksili.codes/markdown-ruby).
+Logseq plugin for ruby/furigana using the `^^()` syntax from the [Baksi's Markdown Ruby Proposal](https://blog.baksili.codes/markdown-ruby).
 
 ## Syntax
 
-Inline (one ruby per line):
+![Showcase](./assets/showcase.png)
+Showcase based on [this](./assets/logseq_test%20ruby.md).
 
 - `[漢字]^^(かんじ)` / `東京^^(とうきょう)` — above
 - `[base]^_(ruby)` — below
@@ -24,7 +25,7 @@ Macro (safe for multiple per line):
 
 ## Known Limitations
 
-> LLogseq parses its own markdown **before** plugins run, and there is currently [no markdown post‑processor API](https://discuss.logseq.com/t/plugin-api-how-to-modify-the-way-markdown-is-render/17313/5).
+> Logseq parses its own markdown **before** plugins run, and there is currently [no markdown post‑processor API](https://discuss.logseq.com/t/plugin-api-how-to-modify-the-way-markdown-is-render/17313/5).
 
 - **Multiple inline `^^()` / `^_()`** – conflicts with Logseq’s highlight (`^^text^^`) and italic (`_text_`).  
   Use one ruby per line or convert to macros/HTML with the slash commands.
