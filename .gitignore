@@ -1,0 +1,16 @@
+node_modules/
+dist/
+.DS_Store
+*.log
+.vscode/
+.idea/
+
+# Vite / build cache
+.vite/
+
+# Test coverage
+coverage/
+
+# Mac junk
+._*
+
