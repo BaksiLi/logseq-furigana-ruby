@@ -1,8 +1,10 @@
 # logseq-furigana-ruby
 
-Logseq plugin for ruby/furigana using the `^^()` syntax from the [Baksi's Markdown Ruby Proposal](https://blog.baksili.codes/markdown-ruby).
+Logseq plugin for ruby/furigana using the `^^()` syntax from [Baksi's Markdown Ruby Proposal](https://blog.baksili.codes/markdown-ruby).
 
-## Syntax
+> A markdown-it plugin and VS Code extension are planned.
+
+## Basic Syntax
 
 ![Showcase](./assets/showcase.png)
 
@@ -11,7 +13,7 @@ Logseq plugin for ruby/furigana using the `^^()` syntax from the [Baksi's Markdo
 Supports various ruby annotation styles (see [full showcase](./assets/logseq_test_ruby.md)):
 
 #### Basic Ruby
-- `[漢字]^^(かんじ)` or `東京^^(とうきょう)` — annotation above
+- `[漢字]^^(かんじ)` – annotation above
 - `[base]^_(ruby)` — annotation below
 - `[北京]^^(ペキン|Beijing)` — two-level annotations (above + below)
 - `[base]^^(over)^_(under)` — chained annotations
@@ -27,31 +29,10 @@ Supports various ruby annotation styles (see [full showcase](./assets/logseq_tes
 - `[base]^_(.~)` — wavy underline
 - `[base]^_(.=)` — double underline
 - `[漢字]^^(..)^_(..)` — bouten above + underdots below
-- `[漢字]^^(..)^_(.-)` — bouten above + solid underline
 
-#### Pipe Equivalence
 
-The pipe syntax `[a]^^(x|y)` is equivalent to the chained syntax `[a]^^(x)^_(y)` — both produce the same output. Use whichever you prefer:
 
-- `[漢字]^^(かんじ|..)` ≡ `[漢字]^^(かんじ)^_(..)` — ruby above + bouten below
-- `[漢字]^^(かんじ|.-)` ≡ `[漢字]^^(かんじ)^_(.-)` — ruby above + underline
-
-#### First-Come-Takes-Place
-
-When a pipe already fills both above/below positions, a chained operator is silently consumed. The pipe-separated levels take priority:
-
-- `[李太白]^^(り たい はく|Lǐ Tài Bái)^_(..)` — the `^_(..)` is ignored; pipe already defines above + below.
-
-This avoids ambiguity: each base can have at most two annotation levels (above and below), and the first syntax to claim a position wins.
-
-#### Per-Character Ruby (rendering)
-- `[春夏秋冬]^^(はる なつ あき ふゆ)` — auto-aligns each character with its annotation
-- `[李太白]^^(り たい はく|Lǐ Tài Bái)` — both levels per-character aligned
-- `[振り仮名]^^(ふ り が な)` — identical characters auto-hidden (り→り omitted)
-
-Space-separate annotations to match base characters 1:1. Mismatched counts fall back to group ruby.
-
-### Macro Syntax
+### Macro Syntax (Logseq)
 
 Use macros when you need multiple ruby annotations on the same line (avoids Logseq parser conflicts):
 
@@ -61,7 +42,39 @@ Use macros when you need multiple ruby annotations on the same line (avoids Logs
 {{renderer :ruby, 漢字, ..}}
 ```
 
-## Known Limitations
+## Use Cases
+
+While the syntax originates from CJK furigana, it supports any interlinear annotation:
+
+**Furigana / phonetic guides**
+- `[漢字]^^(かんじ)` — Japanese kanji → hiragana
+- `[漢字]^^(hàn zì)` — Chinese characters → pinyin
+
+**Translations**
+- `[cat]^^(chat|猫)` — English → French (over) + Chinese (under)
+- `[貓]^^(猫)` — Traditional Chinese → Simplified Chinese
+
+**Transcription / transliteration**
+- `[猫]^^(ねこ|neko)` — kanji → hiragana (over) + romaji (under)
+- `[貓]^^(māo|cat)` — Chinese → pinyin (over) + English (under)
+- `[Москва]^^(Moskva)` — Cyrillic → Latin
+- `[cat]^^(/kæt/)` — IPA transcription
+
+**Emphasis / study aids**
+- `[重要]^^(..)` — bouten dots for emphasis
+- `[重要語句]^^(じゅうようごく|.-)` — furigana above + underline for vocabulary study
+
+## Conversion Commands
+
+Three conversion targets — works on **selected blocks** or current block:
+
+| Command | Description |
+|---------|-------------|
+| `/Ruby → markup` | Convert HTML / macros → `[base]^^(ann)` syntax |
+| `/Ruby → macro` | Convert markup / HTML → `{{renderer :ruby, …}}` |
+| `/Ruby → HTML` | Convert markup / macros → raw `<ruby>` HTML (**one-way** — per-character alignment and auto-hide are baked in) |
+
+## Known Limitations (Logseq)
 
 > Logseq parses its own markdown **before** plugins run, and there is currently [no markdown post‑processor API](https://discuss.logseq.com/t/plugin-api-how-to-modify-the-way-markdown-is-render/17313/5).
 
@@ -75,18 +88,7 @@ Use macros when you need multiple ruby annotations on the same line (avoids Logs
 
 In practice, you can always bypass these issues by converting to **macro** or **HTML** using the slash commands.
 
-
-## Conversion Commands
-
-Three conversion targets — works on **selected blocks** or current block:
-
-| Command | Description |
-|---------|-------------|
-| `/Ruby → markup` | Convert HTML / macros → `[base]^^(ann)` syntax |
-| `/Ruby → macro` | Convert markup / HTML → `{{renderer :ruby, …}}` |
-| `/Ruby → HTML` | Convert markup / macros → raw `<ruby>` HTML (**one-way** — per-character alignment and auto-hide are baked in) |
-
-## Install
+## Install (Logseq)
 
 1. Download/clone this repo
 2. Logseq: **Settings → Advanced → Developer mode**
@@ -100,6 +102,32 @@ pnpm dev      # HMR
 pnpm test     # vitest
 pnpm build    # dist/
 ```
+
+## Appendix: Operator Properties
+
+`^^` and `^_` are **position-assignment operators** on a 2-slot system (over / under). Special patterns (`..`, `.-`, `.~`, `.=`) act as **rendering modifiers** — they change a slot from ruby annotation to CSS decoration (bouten, underline).
+
+**Commutativity** — chain order doesn’t matter; position is determined by the operator:
+- `[a]^^(x)^_(y)` ≡ `[a]^_(y)^^(x)`
+
+**Pipe equivalence** — pipe is compact notation for cross-operator chaining:
+- `[a]^^(x|y)` ≡ `[a]^^(x)^_(y)` ≡ `[a]^_(y)^^(x)`
+- `[漢字]^^(かんじ|.-)` ≡ `[漢字]^^(かんじ)^_(.-)` — ruby above + underline
+
+**Idempotency of position** — same-operator chaining is rejected (each slot claimed once):
+- `[a]^^(x)^^(y)` — NOT chained; two separate expressions
+
+**First-come-takes-place** — when pipe saturates both slots, a chained operator is silently consumed:
+- `[李太白]^^(り たい はく|Lǐ Tài Bái)^_(..)` — `^_(..)` ignored; pipe already fills both
+
+**Capacity** — max 2 levels (over + under) per base.
+
+#### Per-Character Ruby (rendering)
+- `[春夏秋冬]^^(はる なつ あき ふゆ)` — auto-aligns each character with its annotation
+- `[李太白]^^(り たい はく|Lǐ Tài Bái)` — both levels per-character aligned
+- `[振り仮名]^^(ふ り が な)` — identical characters auto-hidden (り→り omitted)
+
+Space-separate annotations to match base characters 1:1. Mismatched counts fall back to group ruby.
 
 ## License
 
