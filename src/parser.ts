@@ -104,25 +104,141 @@ function renderRubyWithUnderline(base: string, rubyText: string, rubyOp: RubyOp)
   return `<ruby class="ls-ruby ls-ruby-mixed ${rubyPos} ls-ruby-underline">${safeBase}<rp>(</rp><rt>${rubyText}</rt><rp>)</rp></ruby>`;
 }
 
+/**
+ * Split annotation by spaces, trimming each part
+ */
+function splitBySpaces(text: string): string[] {
+  return text.split(/\s+/).filter(Boolean);
+}
+
+/**
+ * Count actual characters (not bytes) in a string
+ */
+function countCharacters(text: string): number {
+  return Array.from(text).length;
+}
+
+/**
+ * Check if annotation can be auto-hidden (matches base character)
+ */
+function shouldHideAnnotation(baseChar: string, annotation: string): boolean {
+  return baseChar === annotation;
+}
+
 function renderRuby(base: string, op: RubyOp, levels: string[]): string {
   const safeBase = unescape(base);
   const capped = levels.slice(0, 2);
+  const baseChars = Array.from(safeBase);
 
+  // --- Two levels: try per-character alignment independently for each level ---
+  if (capped.length === 2) {
+    const ann1Parts = capped[0].includes(" ") ? splitBySpaces(capped[0]) : null;
+    const ann2Parts = capped[1].includes(" ") ? splitBySpaces(capped[1]) : null;
+    const can1Align = ann1Parts !== null && ann1Parts.length === baseChars.length;
+    const can2Align = ann2Parts !== null && ann2Parts.length === baseChars.length;
+    const innerPos = op === "^^" ? "ls-ruby-over" : "ls-ruby-under";
+    const outerPos = op === "^^" ? "ls-ruby-under" : "ls-ruby-over";
+
+    if (can1Align && can2Align) {
+      // Both levels per-character aligned
+      let result = "";
+      for (let i = 0; i < baseChars.length; i++) {
+        const char = baseChars[i];
+        const a1 = ann1Parts![i];
+        const a2 = ann2Parts![i];
+        const hide1 = shouldHideAnnotation(char, a1);
+        const hide2 = shouldHideAnnotation(char, a2);
+        if (hide1 && hide2) {
+          result += char;
+        } else if (hide1) {
+          result += `<ruby class="ls-ruby ${outerPos}">${char}<rp>(</rp><rt>${a2}</rt><rp>)</rp></ruby>`;
+        } else if (hide2) {
+          result += `<ruby class="ls-ruby ${innerPos}">${char}<rp>(</rp><rt>${a1}</rt><rp>)</rp></ruby>`;
+        } else {
+          result += `<ruby class="ls-ruby ${outerPos} ls-ruby-double"><ruby class="ls-ruby ${innerPos}">${char}<rp>(</rp><rt>${a1}</rt><rp>)</rp></ruby><rp>(</rp><rt>${a2}</rt><rp>)</rp></ruby>`;
+        }
+      }
+      return result;
+    }
+
+    if (can1Align) {
+      // First level per-character, second level group
+      let innerRubies = "";
+      for (let i = 0; i < baseChars.length; i++) {
+        const char = baseChars[i];
+        const ann = ann1Parts![i];
+        if (shouldHideAnnotation(char, ann)) {
+          innerRubies += char;
+        } else {
+          innerRubies += `<ruby class="ls-ruby ${innerPos}">${char}<rp>(</rp><rt>${ann}</rt><rp>)</rp></ruby>`;
+        }
+      }
+      return (
+        `<ruby class="ls-ruby ${outerPos} ls-ruby-double">` +
+        innerRubies +
+        `<rp>(</rp><rt>${capped[1]}</rt><rp>)</rp></ruby>`
+      );
+    }
+
+    if (can2Align) {
+      // First level group, second level per-character
+      let innerRubies = "";
+      for (let i = 0; i < baseChars.length; i++) {
+        const char = baseChars[i];
+        const ann = ann2Parts![i];
+        if (shouldHideAnnotation(char, ann)) {
+          innerRubies += char;
+        } else {
+          innerRubies += `<ruby class="ls-ruby ${outerPos}">${char}<rp>(</rp><rt>${ann}</rt><rp>)</rp></ruby>`;
+        }
+      }
+      return (
+        `<ruby class="ls-ruby ${innerPos} ls-ruby-double">` +
+        innerRubies +
+        `<rp>(</rp><rt>${capped[0]}</rt><rp>)</rp></ruby>`
+      );
+    }
+
+    // Neither can align: standard double-level group ruby
+    return (
+      `<ruby class="ls-ruby ${outerPos} ls-ruby-double">` +
+      `<ruby class="ls-ruby ${innerPos}">${safeBase}<rp>(</rp><rt>${capped[0]}</rt><rp>)</rp></ruby>` +
+      `<rp>(</rp><rt>${capped[1]}</rt><rp>)</rp></ruby>`
+    );
+  }
+
+  // --- Single level: try per-character alignment ---
+  if (capped.length === 1 && capped[0].includes(" ")) {
+    const annParts = splitBySpaces(capped[0]);
+    if (annParts.length === baseChars.length) {
+      let result = "";
+      const pos = op === "^^" ? "ls-ruby-over" : "ls-ruby-under";
+      for (let i = 0; i < baseChars.length; i++) {
+        const char = baseChars[i];
+        const ann = annParts[i];
+        if (shouldHideAnnotation(char, ann)) {
+          result += char;
+        } else {
+          result += `<ruby class="ls-ruby ${pos}">${char}<rp>(</rp><rt>${ann}</rt><rp>)</rp></ruby>`;
+        }
+      }
+      return result;
+    }
+  }
+
+  // --- Fallback: standard group ruby ---
   if (capped.length === 1) {
     const pos = op === "^^" ? "ls-ruby-over" : "ls-ruby-under";
     return `<ruby class="ls-ruby ${pos}">${safeBase}<rp>(</rp><rt>${capped[0]}</rt><rp>)</rp></ruby>`;
   }
 
-  // Two levels: use nested <ruby> (Chromium doesn't support <rtc> properly).
-  // Inner ruby = first operator's side, outer ruby = opposite side.
-  // See: https://www.w3.org/International/articles/ruby/styling.en.html
+  // Two levels group: nested <ruby> (Chromium doesn't support <rtc>)
   const innerPos = op === "^^" ? "ls-ruby-over" : "ls-ruby-under";
   const outerPos = op === "^^" ? "ls-ruby-under" : "ls-ruby-over";
   return (
     `<ruby class="ls-ruby ${outerPos} ls-ruby-double">` +
     `<ruby class="ls-ruby ${innerPos}">${safeBase}<rp>(</rp><rt>${capped[0]}</rt><rp>)</rp></ruby>` +
-    `<rp>(</rp><rt>${capped[1]}</rt><rp>)</rp>` +
-    `</ruby>`
+    `<rp>(</rp><rt>${capped[1]}</rt><rp>)</rp></ruby>`
   );
 }
 
@@ -169,9 +285,9 @@ export function hasAnyRubyContent(text: string): boolean {
 const MACRO_RE = /\{\{renderer\s+:ruby,\s*([^,}]+),\s*([^,}]+)(?:,\s*([^}]+))?\}\}/g;
 
 /**
- * Convert `^^()` / `^_()` markup to HTML.
+ * Convert `^^()` / `^_()` markup to HTML (single pass).
  */
-export function rubyToHTML(input: string): string {
+function rubyToHTMLPass(input: string): string {
   if (!hasRuby(input)) return input;
 
   let out = "";
@@ -194,7 +310,8 @@ export function rubyToHTML(input: string): string {
 
     if (opStart > 0 && input[opStart - 1] === "]" && !isEscaped(input, opStart - 1)) {
       const open = findOpenBracket(input, opStart - 1);
-      if (open >= 0) {
+      // Skip brackets that were already consumed (nested bracket support)
+      if (open >= 0 && open >= consumedFrom) {
         baseStart = open;
         baseHtml = input.slice(open + 1, opStart - 1);
       }
@@ -335,6 +452,22 @@ export function rubyToHTML(input: string): string {
   }
 
   return out;
+}
+
+/**
+ * Convert `^^()` / `^_()` markup to HTML.
+ * Runs multiple passes to support nested bracket expressions.
+ */
+export function rubyToHTML(input: string): string {
+  if (!hasRuby(input)) return input;
+  let result = input;
+  for (let pass = 0; pass < 5; pass++) {
+    const next = rubyToHTMLPass(result);
+    if (next === result) break;
+    result = next;
+    if (!hasRuby(result)) break;
+  }
+  return result;
 }
 
 // ---------------------------------------------------------------------------

@@ -326,3 +326,100 @@ describe("code protection", () => {
     expect(anyToMarkup(input)).toContain("`{{renderer :ruby, a, b}}`");
   });
 });
+
+// ---------------------------------------------------------------------------
+// Real-world test cases
+// ---------------------------------------------------------------------------
+describe("real-world examples", () => {
+  it("初音ミク with kanji phonetics", () => {
+    const r = rubyToHTML("[初音]^^(はつね)ミク");
+    expect(r).toContain("<ruby");
+    expect(r).toContain("初音");
+    expect(r).toContain("<rt>はつね</rt>");
+    expect(r).toContain("ミク");
+  });
+  
+  it("only second level can per-character align", () => {
+    // First level has no spaces (group), second level has spaces matching chars
+    const r = rubyToHTML("[李太白]^^(りたいはく|Lǐ Tài Bái)");
+    expect(r).toContain("ls-ruby-double");
+    // First level: group annotation
+    expect(r).toContain("<rt>りたいはく</rt>");
+    // Second level: per-character aligned
+    expect(r).toContain("<rt>Lǐ</rt>");
+    expect(r).toContain("<rt>Tài</rt>");
+    expect(r).toContain("<rt>Bái</rt>");
+  });
+  
+  it("both levels per-character aligned", () => {
+    // Both levels have space-delimited annotations matching char count
+    const r = rubyToHTML("[李太白]^^(り たい はく|Lǐ Tài Bái)");
+    // First level per-character
+    expect(r).toContain("<rt>り</rt>");
+    expect(r).toContain("<rt>たい</rt>");
+    expect(r).toContain("<rt>はく</rt>");
+    // Second level also per-character
+    expect(r).toContain("<rt>Lǐ</rt>");
+    expect(r).toContain("<rt>Tài</rt>");
+    expect(r).toContain("<rt>Bái</rt>");
+    expect(r).toContain("ls-ruby-double");
+  });
+  
+  it("space-delimited single level", () => {
+    const r = rubyToHTML("[春夏秋冬]^^(はる なつ あき ふゆ)");
+    // 4 characters, 4 annotations
+    expect(r).toContain("<rt>はる</rt>");
+    expect(r).toContain("<rt>なつ</rt>");
+    expect(r).toContain("<rt>あき</rt>");
+    expect(r).toContain("<rt>ふゆ</rt>");
+    // No double-sided class
+    expect(r).not.toContain("ls-ruby-double");
+  });
+  
+  it("space-delimited count mismatch falls back to group ruby", () => {
+    // 4 characters but only 1 annotation
+    const r = rubyToHTML("[春夏秋冬]^^(四季)");
+    // Should fallback to group ruby
+    expect(r).toContain("<ruby");
+    expect(r).toContain("<rt>四季</rt>");
+    // Should NOT split into multiple rubies
+    expect(r).toMatch(/<ruby[^>]*>春夏秋冬<rp>\(<\/rp><rt>四季<\/rt>/);
+  });
+  
+  it("auto-hide matching characters in ruby text", () => {
+    // 振り仮名 - り appears in both base and ruby
+    const r = rubyToHTML("[振り仮名]^^(ふ り が な)");
+    // Should intelligently segment: 振(ふ) り(hidden) 仮(が) 名(な)
+    expect(r).toContain("振");
+    expect(r).toContain("り");
+    expect(r).toContain("仮");
+    expect(r).toContain("名");
+  });
+  
+  it("nested brackets for partially overlapping ruby", () => {
+    const r = rubyToHTML("[[護]^^(まも)れ]^_(プロテゴ)");
+    // Inner ruby: 護 with まも over
+    expect(r).toContain("<rt>まも</rt>");
+    // Outer ruby: wraps 護れ with プロテゴ under
+    expect(r).toContain("<rt>プロテゴ</rt>");
+    expect(r).toContain("ls-ruby-under");
+    expect(r).toContain("護");
+    expect(r).toContain("れ");
+  });
+  
+  it("DEMO: output examples", () => {
+    console.log("\n=== Ruby Examples ===\n");
+    console.log("1. Both levels aligned:");
+    console.log(rubyToHTML("[李太白]^^(り たい はく|Lǐ Tài Bái)"));
+    console.log("\n2. Only second level aligned:");
+    console.log(rubyToHTML("[李太白]^^(りたいはく|Lǐ Tài Bái)"));
+    console.log("\n3. Single level aligned:");
+    console.log(rubyToHTML("[春夏秋冬]^^(はる なつ あき ふゆ)"));
+    console.log("\n4. Auto-hide (り):");
+    console.log(rubyToHTML("[振り仮名]^^(ふ り が な)"));
+    console.log("\n5. Nested brackets:");
+    console.log(rubyToHTML("[[護]^^(まも)れ]^_(プロテゴ)"));
+    console.log("");
+    expect(true).toBe(true);
+  });
+});

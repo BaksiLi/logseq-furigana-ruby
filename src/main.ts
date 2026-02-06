@@ -154,8 +154,8 @@ async function main() {
     await convertBlocks(anyToMacro, "→ macro");
   });
 
-  logseq.Editor.registerSlashCommand("Ruby → HTML", async () => {
-    await convertBlocks(anyToHTML, "→ HTML");
+  logseq.Editor.registerSlashCommand("Ruby → HTML (one-way)", async () => {
+    await convertBlocks(anyToHTML, "→ HTML (one-way)");
   });
 
   // ---------------------------------------------------------------------------

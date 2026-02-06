@@ -10,21 +10,28 @@ Logseq plugin for ruby/furigana using the `^^()` syntax from the [Baksi's Markdo
 
 Supports various ruby annotation styles (see [full showcase](./assets/logseq_test_ruby.md)):
 
+#### Basic Ruby
 - `[漢字]^^(かんじ)` or `東京^^(とうきょう)` — annotation above
 - `[base]^_(ruby)` — annotation below
 - `[北京]^^(ペキン|Beijing)` — two-level annotations (above + below)
 - `[base]^^(over)^_(under)` — chained annotations
+
+#### Per-Character Ruby
+- `[春夏秋冬]^^(はる なつ あき ふゆ)` — auto-aligns each character with its annotation
+- `[李太白]^^(り たい はく|Lǐ Tài Bái)` — both levels per-character aligned
+- `[振り仮名]^^(ふ り が な)` — identical characters auto-hidden (り→り omitted)
+
+Space-separate annotations to match base characters 1:1. Mismatched counts fall back to group ruby.
+
+#### Nested / Partially Overlapping Ruby
+- `[[護]^^(まも)れ]^_(プロテゴ)` — inner ruby + outer annotation on a larger span
+
+#### Bouten & Underline
 - `[漢字]^^(..)` — bouten (emphasis dots) above
-- `[漢字]^_(..)` — underdots (dotted underline)
-- `[base]^_(.-)` — underline
+- `[漢字]^_(..)` — dotted underline
+- `[base]^_(.-)` — solid underline
 - `[漢字]^^(..)^_(..)` — bouten above + underdots below
 - `[漢字]^^(..)^_(.-)` — bouten above + solid underline
-- `[漢字]^_(.-)^^(..)` — underline + bouten above
-- `[漢字]^^(a)^_(..)` — ruby "a" above + underdots below (mixed)
-- `[漢字]^^(..)^_(s)` — bouten above + ruby "s" below (mixed)
-- `[漢字]^^(a)^_(.-)` — ruby "a" above + underline (mixed)
-
-**Mixed patterns**: You can combine regular ruby text with special patterns (bouten `..` or underline `.-`). The special pattern applies its visual effect while the regular text renders as ruby annotation on the opposite side.
 
 ### Macro Syntax
 
@@ -59,7 +66,7 @@ Three conversion targets — works on **selected blocks** or current block:
 |---------|-------------|
 | `/Ruby → markup` | Convert HTML / macros → `[base]^^(ann)` syntax |
 | `/Ruby → macro` | Convert markup / HTML → `{{renderer :ruby, …}}` |
-| `/Ruby → HTML` | Convert markup / macros → raw `<ruby>` HTML |
+| `/Ruby → HTML` | Convert markup / macros → raw `<ruby>` HTML (**one-way** — per-character alignment and auto-hide are baked in) |
 
 ## Install
 
@@ -72,7 +79,7 @@ Three conversion targets — works on **selected blocks** or current block:
 ```bash
 pnpm install
 pnpm dev      # HMR
-pnpm test     # 46 tests
+pnpm test     # vitest
 pnpm build    # dist/
 ```
 
