@@ -1,0 +1,52 @@
+name: Publish Plugin
+
+on:
+  push:
+    tags:
+      - 'v*' # 當推送 v 開頭的 tag 時觸發 (例如 v0.2.0)
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write # 需要寫入權限來創建 Release
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Install pnpm
+        uses: pnpm/action-setup@v2
+        with:
+          version: 9
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Build
+        run: pnpm run build
+
+      - name: Bundle Plugin
+        run: |
+          mkdir -p release
+          # 複製構建產物和必要文件到 release 文件夾
+          cp -r dist/* release/
+          cp package.json release/
+          cp icon.svg release/
+          cp README.md release/
+          cp LICENSE release/
+          
+          # 進入 release 文件夾打包 (這樣解壓後不會多一層目錄)
+          cd release
+          zip -r ../logseq-furigana-ruby.zip .
+
+      - name: Create Release
+        uses: softprops/action-gh-release@v1
+        with:
+          files: logseq-furigana-ruby.zip
+          draft: false
+          prerelease: false
