@@ -1,0 +1,35 @@
+- ### Above
+	- `[漢字]^^(かんじ)` [漢字]^^(かんじ)
+	- `cat^^(/kæt/)` cat^^(/kæt/)
+	- `**H**₂O^^(**hydrogen** dioxide)` H₂O^^(hydrogen dioxide)
+- ### Below
+	- `[base]^_(ruby)` [base]^_(ruby)
+	- `base^_(ruby)` base^_(ruby)
+- ### Multi-levels: above + below (max 2)
+	- `[北京]^^(ペキン|Beijing)` [北京]^^(ペキン|Beijing)
+	- `[base]^^(over)^_(under)` [base]^^(over)^_(under)
+	- `[base]^_(under)^^(over)` [base]^_(under)^^(over)
+- ### Special Uses
+	- `[漢字]^^(..)` [漢字]^^(..)
+	- `[漢字]^_(..)` [漢字]^_(..)
+	- `[漢字]^_(..)^^(..)` [漢字]^_(..)^^(..)
+	- `[漢字]^^(..)^_(..)` [漢字]^^(..)^_(..)
+	- `[漢字]^_(.-)` [漢字]^_(.-)
+- ### Limitations
+	- [汉字]^^(hànzì)
+		- `[汉]^^(hàn) [字]^^(zì)` [汉](hàn) [字](zì)
+		- `[汉]^^(hàn) [字]^^(zì)` [汉](hàn) [字](zì)
+	- [北京]^^(ペキン|Beijing)
+		- `[北京]^^(ペキン)[[北京]^^(ペキン)]^^(Beijing)` [北京](ペキン)[[北京](ペキン)]^^(Beijing)
+		- `[北京]^^(ペキン|Beijing)[[北京]^^(ペキン)^_(Beijing)]^^(PKG)` [北京](ペキン|Beijing)[[北京](ペキン)^_(Beijing)]^^(PKG)
+	- [取り返す]^^(とり/かえ/す)
+	- Escaped delimiter
+		- [text with | pipe]^^(ruby)
+		- [text with]^^(ruby| pipe)
+	- Bouten diacritic
+		- [漢字]^^(..)
+		- [漢字]^_(..)
+		- [漢字]^^(..)^_(..)
+		- [漢字]^_(..)^^(..)
+		- [漢字]^^(a)^_(..)
+		- [漢字]^^(..)^_(s)

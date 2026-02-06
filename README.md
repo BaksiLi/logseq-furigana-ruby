@@ -5,21 +5,26 @@ Logseq plugin for ruby/furigana using the `^^()` syntax from the [Baksi's Markdo
 ## Syntax
 
 ![Showcase](./assets/showcase.png)
-Showcase based on [this](./assets/logseq_test%20ruby.md).
 
-- `[漢字]^^(かんじ)` / `東京^^(とうきょう)` — above
-- `[base]^_(ruby)` — below
-- `[北京]^^(ペキン|Beijing)` — 2 levels (above + below)
-- `[base]^^(over)^_(under)` — mixed chain
-- `[漢字]^^(..)` — bouten dots above
-- `[漢字]^_(..)` – underdots
+### Inline Markup
+
+Supports various ruby annotation styles (see [full showcase](./assets/logseq_test_ruby.md)):
+
+- `[漢字]^^(かんじ)` or `東京^^(とうきょう)` — annotation above
+- `[base]^_(ruby)` — annotation below
+- `[北京]^^(ペキン|Beijing)` — two-level annotations (above + below)
+- `[base]^^(over)^_(under)` — chained annotations
+- `[漢字]^^(..)` — bouten (emphasis dots) above
+- `[漢字]^_(..)` — underdots
 - `[base]^_(.-)` — underline
 
-Macro (safe for multiple per line):
+### Macro Syntax
+
+Use macros when you need multiple ruby annotations on the same line (avoids Logseq parser conflicts):
 
 ```
 {{renderer :ruby, 漢字, かんじ}}
-{{renderer :ruby, base, ann, under}}
+{{renderer :ruby, base, annotation, under}}
 {{renderer :ruby, 漢字, ..}}
 ```
 
