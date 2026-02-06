@@ -16,12 +16,6 @@ Supports various ruby annotation styles (see [full showcase](./assets/logseq_tes
 - `[北京]^^(ペキン|Beijing)` — two-level annotations (above + below)
 - `[base]^^(over)^_(under)` — chained annotations
 
-#### Per-Character Ruby
-- `[春夏秋冬]^^(はる なつ あき ふゆ)` — auto-aligns each character with its annotation
-- `[李太白]^^(り たい はく|Lǐ Tài Bái)` — both levels per-character aligned
-- `[振り仮名]^^(ふ り が な)` — identical characters auto-hidden (り→り omitted)
-
-Space-separate annotations to match base characters 1:1. Mismatched counts fall back to group ruby.
 
 #### Nested / Partially Overlapping Ruby
 - `[[護]^^(まも)れ]^_(プロテゴ)` — inner ruby + outer annotation on a larger span
@@ -30,8 +24,32 @@ Space-separate annotations to match base characters 1:1. Mismatched counts fall 
 - `[漢字]^^(..)` — bouten (emphasis dots) above
 - `[漢字]^_(..)` — dotted underline
 - `[base]^_(.-)` — solid underline
+- `[base]^_(.~)` — wavy underline
+- `[base]^_(.=)` — double underline
 - `[漢字]^^(..)^_(..)` — bouten above + underdots below
 - `[漢字]^^(..)^_(.-)` — bouten above + solid underline
+
+#### Pipe Equivalence
+
+The pipe syntax `[a]^^(x|y)` is equivalent to the chained syntax `[a]^^(x)^_(y)` — both produce the same output. Use whichever you prefer:
+
+- `[漢字]^^(かんじ|..)` ≡ `[漢字]^^(かんじ)^_(..)` — ruby above + bouten below
+- `[漢字]^^(かんじ|.-)` ≡ `[漢字]^^(かんじ)^_(.-)` — ruby above + underline
+
+#### First-Come-Takes-Place
+
+When a pipe already fills both above/below positions, a chained operator is silently consumed. The pipe-separated levels take priority:
+
+- `[李太白]^^(り たい はく|Lǐ Tài Bái)^_(..)` — the `^_(..)` is ignored; pipe already defines above + below.
+
+This avoids ambiguity: each base can have at most two annotation levels (above and below), and the first syntax to claim a position wins.
+
+#### Per-Character Ruby (rendering)
+- `[春夏秋冬]^^(はる なつ あき ふゆ)` — auto-aligns each character with its annotation
+- `[李太白]^^(り たい はく|Lǐ Tài Bái)` — both levels per-character aligned
+- `[振り仮名]^^(ふ り が な)` — identical characters auto-hidden (り→り omitted)
+
+Space-separate annotations to match base characters 1:1. Mismatched counts fall back to group ruby.
 
 ### Macro Syntax
 

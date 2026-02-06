@@ -133,6 +133,70 @@ describe("rubyToHTML — chaining", () => {
     expect(r).toContain("ls-ruby-underline");
     expect(r).toContain("ls-ruby-bouten-over");
   });
+  it("pipe + chain conflict: pipe wins, chain consumed", () => {
+    const r = rubyToHTML("[李太白]^^(り たい はく|Lǐ Tài Bái)^_(..)");
+    expect(r).toContain("ls-ruby-double");
+    expect(r).toContain("<rt>り</rt>");
+    expect(r).toContain("<rt>Lǐ</rt>");
+    expect(r).not.toContain("ls-ruby-bouten");
+    // Chained ^_(..) should be consumed, not left as literal text
+    expect(r).not.toContain("^_");
+    expect(r).not.toContain("..");
+  });
+});
+
+// ---------------------------------------------------------------------------
+// rubyToHTML — pipe-separated special patterns
+// ---------------------------------------------------------------------------
+describe("rubyToHTML — pipe-separated special patterns", () => {
+  it("ruby + underline via pipe ^^(text|.-)", () => {
+    const r = rubyToHTML("[李太白]^^(り たい はく|.-)");
+    expect(r).toContain("<ruby");
+    expect(r).toContain("ls-ruby-mixed");
+    expect(r).toContain("ls-ruby-underline");
+    expect(r).toContain("ls-ruby-over");
+    expect(r).not.toContain(".-");
+  });
+  it("ruby + bouten via pipe ^^(text|..)", () => {
+    const r = rubyToHTML("[漢字]^^(かんじ|..)");
+    expect(r).toContain("<ruby");
+    expect(r).toContain("ls-ruby-mixed");
+    expect(r).toContain("ls-ruby-bouten-under");
+    expect(r).toContain("<rt>かんじ</rt>");
+  });
+  it("bouten + ruby via pipe ^^(..|text)", () => {
+    const r = rubyToHTML("[漢字]^^(..|under)");
+    expect(r).toContain("<ruby");
+    expect(r).toContain("ls-ruby-mixed");
+    expect(r).toContain("ls-ruby-bouten-over");
+    expect(r).toContain("<rt>under</rt>");
+  });
+  it("underline + ruby via pipe ^_(.-|text)", () => {
+    const r = rubyToHTML("[漢字]^_(.-|over)");
+    expect(r).toContain("<ruby");
+    expect(r).toContain("ls-ruby-mixed");
+    expect(r).toContain("ls-ruby-underline");
+    expect(r).toContain("<rt>over</rt>");
+  });
+  it("both special via pipe ^^(..|..)", () => {
+    const r = rubyToHTML("[漢字]^^(..|..)");
+    expect(r).toContain("ls-ruby-bouten-over");
+    expect(r).toContain("ls-ruby-bouten-under");
+    expect(r).not.toContain("<ruby");
+  });
+  it("both special via pipe ^^(..|.-)", () => {
+    const r = rubyToHTML("[漢字]^^(..|.-)");
+    expect(r).toContain("ls-ruby-bouten-over");
+    expect(r).toContain("ls-ruby-underline");
+  });
+  it(".- at over position is NOT underline ^^(.-|text)", () => {
+    // .- only means underline when at the ^_ (under) position
+    const r = rubyToHTML("[aa]^^(.-|bb)");
+    expect(r).toContain("<rt>.-</rt>");
+    expect(r).toContain("<rt>bb</rt>");
+    expect(r).not.toContain("ls-ruby-underline");
+    expect(r).toContain("ls-ruby-double");
+  });
 });
 
 // ---------------------------------------------------------------------------
@@ -197,6 +261,49 @@ describe("rubyToHTML — underline", () => {
     expect(r).toContain("ls-ruby-bouten");
     expect(r).toContain("ls-ruby-underline");
   });
+  it("wavy underline ^_(.~)", () => {
+    expect(rubyToHTML("[base]^_(.~)")).toBe(
+      '<span class="ls-ruby-underline ls-ruby-underline-wavy">base</span>'
+    );
+  });
+  it("double underline ^_(.=)", () => {
+    expect(rubyToHTML("[base]^_(.=)")).toBe(
+      '<span class="ls-ruby-underline ls-ruby-underline-double">base</span>'
+    );
+  });
+  it(".~ only with ^_ operator", () => {
+    // ^^(.~) should be treated as regular ruby text, not underline
+    expect(rubyToHTML("[base]^^(.~)")).toContain("<ruby");
+    expect(rubyToHTML("[base]^^(.~)")).toContain("<rt>.~</rt>");
+  });
+  it("wavy: bouten + wavy chain ^^(..)^_(.~)", () => {
+    const r = rubyToHTML("[漢字]^^(..)^_(.~)");
+    expect(r).toContain("ls-ruby-bouten");
+    expect(r).toContain("ls-ruby-underline");
+    expect(r).toContain("ls-ruby-underline-wavy");
+  });
+  it("wavy: ruby + wavy via chain ^^(a)^_(.~)", () => {
+    const r = rubyToHTML("[漢字]^^(a)^_(.~)");
+    expect(r).toContain("<ruby");
+    expect(r).toContain("ls-ruby-mixed");
+    expect(r).toContain("ls-ruby-underline");
+    expect(r).toContain("ls-ruby-underline-wavy");
+    expect(r).toContain("<rt>a</rt>");
+  });
+  it("wavy: ruby + wavy via pipe ^^(text|.~)", () => {
+    const r = rubyToHTML("[漢字]^^(かんじ|.~)");
+    expect(r).toContain("<ruby");
+    expect(r).toContain("ls-ruby-mixed");
+    expect(r).toContain("ls-ruby-underline-wavy");
+    expect(r).toContain("<rt>かんじ</rt>");
+  });
+  it("double: ruby + double via pipe ^^(text|.=)", () => {
+    const r = rubyToHTML("[漢字]^^(かんじ|.=)");
+    expect(r).toContain("<ruby");
+    expect(r).toContain("ls-ruby-mixed");
+    expect(r).toContain("ls-ruby-underline-double");
+    expect(r).toContain("<rt>かんじ</rt>");
+  });
 });
 
 // ---------------------------------------------------------------------------
@@ -250,6 +357,12 @@ describe("renderMacroRuby", () => {
   });
   it("underline", () => {
     expect(renderMacroRuby([":ruby", "b", ".-", "under"])).toContain("ls-ruby-underline");
+  });
+  it("wavy underline", () => {
+    expect(renderMacroRuby([":ruby", "b", ".~", "under"])).toContain("ls-ruby-underline-wavy");
+  });
+  it("double underline", () => {
+    expect(renderMacroRuby([":ruby", "b", ".=", "under"])).toContain("ls-ruby-underline-double");
   });
   it("null for missing args", () => {
     expect(renderMacroRuby([":ruby"])).toBeNull();

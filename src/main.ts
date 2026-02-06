@@ -51,25 +51,27 @@ async function main() {
       text-underline-offset: 0.15em;
     }
 
-    /* Underline from ^_(.-) */
+    /* Underline from ^_(.-) / ^_(.~) / ^_(.=) */
     span.ls-ruby-underline {
-      text-decoration: underline;
+      text-decoration-line: underline;
       text-underline-offset: 0.15em;
     }
+    span.ls-ruby-underline.ls-ruby-underline-wavy { text-decoration-style: wavy; }
+    span.ls-ruby-underline.ls-ruby-underline-double { text-decoration-style: double; }
 
-    /* Bouten over + underline: text-emphasis dots above + solid underline */
+    /* Bouten over + underline: text-emphasis dots above + underline */
     span.ls-ruby-bouten.ls-ruby-bouten-over.ls-ruby-underline {
       text-emphasis: filled dot;
       -webkit-text-emphasis: filled dot;
       text-emphasis-position: over right;
       -webkit-text-emphasis-position: over right;
-      text-decoration: underline;
+      text-decoration-line: underline;
       text-underline-offset: 0.15em;
     }
 
     /* Bouten under + underline: dotted underline becomes solid */
     span.ls-ruby-bouten.ls-ruby-bouten-under.ls-ruby-underline {
-      text-decoration: underline;
+      text-decoration-line: underline;
       text-underline-offset: 0.15em;
     }
 
@@ -89,9 +91,13 @@ async function main() {
 
     /* Mixed: ruby annotation + underline */
     ruby.ls-ruby-mixed.ls-ruby-underline {
-      text-decoration: underline;
+      text-decoration-line: underline;
       text-underline-offset: 0.15em;
     }
+
+    /* Underline style variants (apply to both span and ruby contexts) */
+    .ls-ruby-underline-wavy { text-decoration-style: wavy; }
+    .ls-ruby-underline-double { text-decoration-style: double; }
   `);
 
   // ---------------------------------------------------------------------------
