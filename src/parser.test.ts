@@ -343,6 +343,61 @@ describe("rubyToHTML — edge cases", () => {
 });
 
 // ---------------------------------------------------------------------------
+// rubyToHTML — inline-only (no newlines)
+// ---------------------------------------------------------------------------
+describe("rubyToHTML — inline-only", () => {
+  it("newline in bracketed base rejects", () => {
+    expect(rubyToHTML("[base\ntext]^^(ann)")).toBe("[base\ntext]^^(ann)");
+  });
+  it("newline in annotation rejects", () => {
+    expect(rubyToHTML("[base]^^(ann\ntext)")).toBe("[base]^^(ann\ntext)");
+  });
+  it("CR in annotation rejects", () => {
+    expect(rubyToHTML("[base]^^(ann\rtext)")).toBe("[base]^^(ann\rtext)");
+  });
+  it("CRLF in base rejects", () => {
+    expect(rubyToHTML("[base\r\ntext]^^(ann)")).toBe("[base\r\ntext]^^(ann)");
+  });
+  it("newline in abbreviated form annotation", () => {
+    expect(rubyToHTML("漢字^^(ann\ntext)")).toBe("漢字^^(ann\ntext)");
+  });
+});
+
+// ---------------------------------------------------------------------------
+// rubyToHTML — abbreviated form boundary
+// ---------------------------------------------------------------------------
+describe("rubyToHTML — abbreviated form boundary", () => {
+  it("does not include [ in abbreviated base", () => {
+    // With bracket-stop fix, abbreviated form stops at [,
+    // so 初音ミク is the base (not [初音ミク).
+    // Multi-pass then processes the outer [...]^_(Vocaloid) bracket.
+    const r = rubyToHTML("[初音ミク^^(偉大なる|世界一姫様)]^_(Vocaloid)");
+    // 偉大なる should be over (operator was ^^)
+    expect(r).toContain("ls-ruby-over");
+    expect(r).toContain("<rt>偉大なる</rt>");
+    expect(r).toContain("<rt>世界一姫様</rt>");
+    expect(r).toContain("<rt>Vocaloid</rt>");
+    // The base text should NOT include [
+    expect(r).not.toMatch(/>\[/);
+  });
+  it("abbreviated form stops at brackets", () => {
+    const r = rubyToHTML("[text]abc^^(ann)");
+    // ] stops the abbreviated scan, so base is "abc"
+    expect(r).toContain("[text]");
+    expect(r).toContain("<ruby");
+    expect(r).toContain("<rt>ann</rt>");
+  });
+  it("[ stops scan — avoids [ in abbreviated base", () => {
+    const r = rubyToHTML("prefix[abc^^(ann)");
+    // Abbreviated form stops at [, base = "abc"
+    expect(r).toContain("prefix[");
+    expect(r).toContain("<ruby");
+    expect(r).toContain("abc");
+    expect(r).toContain("<rt>ann</rt>");
+  });
+});
+
+// ---------------------------------------------------------------------------
 // renderMacroRuby
 // ---------------------------------------------------------------------------
 describe("renderMacroRuby", () => {
@@ -382,6 +437,35 @@ describe("anyToMarkup", () => {
   it("HTML → markup", () => {
     expect(anyToMarkup('<ruby class="ls-ruby ls-ruby-over">漢字<rp>(</rp><rt>かんじ</rt><rp>)</rp></ruby>')).toBe(
       "[漢字]^^(かんじ)"
+    );
+  });
+  it("HTML under → markup preserves position", () => {
+    expect(anyToMarkup('<ruby class="ls-ruby ls-ruby-under">base<rp>(</rp><rt>ann</rt><rp>)</rp></ruby>')).toBe(
+      "[base]^_(ann)"
+    );
+  });
+  it("HTML double-level under-first → markup", () => {
+    const html = '<ruby class="ls-ruby ls-ruby-over ls-ruby-double"><ruby class="ls-ruby ls-ruby-under">base<rp>(</rp><rt>x</rt><rp>)</rp></ruby><rp>(</rp><rt>y</rt><rp>)</rp></ruby>';
+    expect(anyToMarkup(html)).toBe("[base]^_(x|y)");
+  });
+  it("HTML mixed ruby over + bouten under → markup", () => {
+    expect(anyToMarkup('<ruby class="ls-ruby ls-ruby-mixed ls-ruby-over ls-ruby-bouten-under">漢字<rp>(</rp><rt>かんじ</rt><rp>)</rp></ruby>')).toBe(
+      "[漢字]^^(かんじ)^_(..)"
+    );
+  });
+  it("HTML mixed ruby under + bouten over → markup", () => {
+    expect(anyToMarkup('<ruby class="ls-ruby ls-ruby-mixed ls-ruby-under ls-ruby-bouten-over">漢字<rp>(</rp><rt>かんじ</rt><rp>)</rp></ruby>')).toBe(
+      "[漢字]^_(かんじ)^^(..)"
+    );
+  });
+  it("HTML mixed ruby over + underline → markup", () => {
+    expect(anyToMarkup('<ruby class="ls-ruby ls-ruby-mixed ls-ruby-over ls-ruby-underline">漢字<rp>(</rp><rt>かんじ</rt><rp>)</rp></ruby>')).toBe(
+      "[漢字]^^(かんじ)^_(.-)"
+    );
+  });
+  it("HTML mixed ruby over + wavy underline → markup", () => {
+    expect(anyToMarkup('<ruby class="ls-ruby ls-ruby-mixed ls-ruby-over ls-ruby-underline ls-ruby-underline-wavy">漢字<rp>(</rp><rt>かんじ</rt><rp>)</rp></ruby>')).toBe(
+      "[漢字]^^(かんじ)^_(.~)"
     );
   });
   it("HTML bouten + underline → markup", () => {

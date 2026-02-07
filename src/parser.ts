@@ -47,6 +47,16 @@ function underlinePatternFromClasses(el: Element): string | null {
   return null;
 }
 
+/** Direct-child query helpers (`:scope >` is unreliable in jsdom for nested ruby) */
+function directChildrenByTag(el: Element, tag: string): Element[] {
+  const upper = tag.toUpperCase();
+  return Array.from(el.children).filter((c) => c.tagName === upper);
+}
+function firstDirectChildByTag(el: Element, tag: string): Element | null {
+  const upper = tag.toUpperCase();
+  return Array.from(el.children).find((c) => c.tagName === upper) ?? null;
+}
+
 function isEscaped(input: string, i: number): boolean {
   let backslashes = 0;
   for (let j = i - 1; j >= 0 && input[j] === "\\"; j--) backslashes++;
@@ -74,6 +84,7 @@ function splitByUnescapedPipe(input: string): string[] {
 
 function findCloseParen(input: string, start: number): number {
   for (let i = start; i < input.length; i++) {
+    if (input[i] === "\n" || input[i] === "\r") return -1;
     if (input[i] === ")" && !isEscaped(input, i)) return i;
   }
   return -1;
@@ -81,6 +92,7 @@ function findCloseParen(input: string, start: number): number {
 
 function findOpenBracket(input: string, closeBracketIdx: number): number {
   for (let i = closeBracketIdx - 1; i >= 0; i--) {
+    if (input[i] === "\n" || input[i] === "\r") return -1;
     if (input[i] === "[" && !isEscaped(input, i)) return i;
   }
   return -1;
@@ -340,12 +352,17 @@ function rubyToHTMLPass(input: string): string {
       }
     } else {
       let k = opStart - 1;
-      while (k >= 0 && !/\s/.test(input[k])) k--;
+      while (k >= 0) {
+        const ch = input[k];
+        if (/\s/.test(ch)) break;
+        if ((ch === "[" || ch === "]") && !isEscaped(input, k)) break;
+        k--;
+      }
       baseStart = k + 1;
       baseHtml = input.slice(baseStart, opStart);
     }
 
-    if (baseStart < 0 || baseHtml.length === 0) {
+    if (baseStart < consumedFrom || baseStart < 0 || baseHtml.length === 0) {
       out += input.slice(i, opStart + 1);
       i = opStart + 1;
       continue;
@@ -626,18 +643,23 @@ function markupToMacro(input: string): string {
 
     if (opStart > 0 && input[opStart - 1] === "]" && !isEscaped(input, opStart - 1)) {
       const open = findOpenBracket(input, opStart - 1);
-      if (open >= 0) {
+      if (open >= 0 && open >= consumedFrom) {
         baseStart = open;
         baseHtml = input.slice(open + 1, opStart - 1);
       }
     } else {
       let k = opStart - 1;
-      while (k >= 0 && !/\s/.test(input[k])) k--;
+      while (k >= 0) {
+        const ch = input[k];
+        if (/\s/.test(ch)) break;
+        if ((ch === "[" || ch === "]") && !isEscaped(input, k)) break;
+        k--;
+      }
       baseStart = k + 1;
       baseHtml = input.slice(baseStart, opStart);
     }
 
-    if (baseStart < 0 || baseHtml.length === 0) {
+    if (baseStart < consumedFrom || baseStart < 0 || baseHtml.length === 0) {
       out += input.slice(i, opStart + 1);
       i = opStart + 1;
       continue;
@@ -675,35 +697,50 @@ function htmlElementsToMacro(root: HTMLElement): void {
     for (const ruby of rubies) {
       if (!ruby.parentNode) continue;
 
-      const innerRuby = ruby.querySelector(":scope > ruby");
+      // Mixed ruby — macro only preserves ruby text (decoration lost)
+      if (ruby.classList.contains("ls-ruby-mixed")) {
+        const baseClone = ruby.cloneNode(true) as HTMLElement;
+        baseClone.querySelectorAll("rt, rp").forEach((n) => n.remove());
+        const base = (baseClone.textContent ?? "").trim();
+        const rt = firstDirectChildByTag(ruby, "rt");
+        const rubyText = rt ? (rt.textContent ?? "").trim() : "";
+        if (!base || !rubyText) continue;
+        const posArg = ruby.classList.contains("ls-ruby-under") ? ", under" : "";
+        ruby.replaceWith(root.ownerDocument.createTextNode(`{{renderer :ruby, ${base}, ${rubyText}${posArg}}}`));
+        continue;
+      }
+
+      const innerRuby = firstDirectChildByTag(ruby, "ruby");
       if (innerRuby) {
-        const outerRts = Array.from(ruby.querySelectorAll(":scope > rt")).map(
+        const outerRts = directChildrenByTag(ruby, "rt").map(
           (rt) => (rt.textContent ?? "").trim()
         ).filter(Boolean);
         const innerClone = innerRuby.cloneNode(true) as HTMLElement;
         innerClone.querySelectorAll("rt, rp").forEach((n) => n.remove());
         const base = (innerClone.textContent ?? "").trim();
-        const innerRts = Array.from(innerRuby.querySelectorAll(":scope > rt")).map(
+        const innerRts = directChildrenByTag(innerRuby, "rt").map(
           (rt) => (rt.textContent ?? "").trim()
         ).filter(Boolean);
         const levels = [...innerRts, ...outerRts].filter(Boolean);
         const ann = levels.join("|");
-        if (ann) ruby.replaceWith(root.ownerDocument.createTextNode(`{{renderer :ruby, ${base}, ${ann}}}`));
+        const posArg = innerRuby.classList.contains("ls-ruby-under") ? ", under" : "";
+        if (ann) ruby.replaceWith(root.ownerDocument.createTextNode(`{{renderer :ruby, ${base}, ${ann}${posArg}}}`));
         continue;
       }
 
       const baseClone = ruby.cloneNode(true) as HTMLElement;
       baseClone.querySelectorAll("rt, rp, rtc").forEach((n) => n.remove());
       const base = (baseClone.textContent ?? "").trim();
-      const rts = Array.from(ruby.querySelectorAll(":scope > rt")).map(
+      const rts = directChildrenByTag(ruby, "rt").map(
         (rt) => (rt.textContent ?? "").trim()
       );
-      const rtcs = Array.from(ruby.querySelectorAll(":scope > rtc")).map(
+      const rtcs = directChildrenByTag(ruby, "rtc").map(
         (rtc) => (rtc.textContent ?? "").trim()
       );
       const levels = [...rts, ...rtcs].filter(Boolean);
       const ann = levels.join("|");
-      if (ann) ruby.replaceWith(root.ownerDocument.createTextNode(`{{renderer :ruby, ${base}, ${ann}}}`));
+      const posArg = ruby.classList.contains("ls-ruby-under") ? ", under" : "";
+      if (ann) ruby.replaceWith(root.ownerDocument.createTextNode(`{{renderer :ruby, ${base}, ${ann}${posArg}}}`));
     }
     rubies = Array.from(root.querySelectorAll("ruby"));
   }
@@ -775,23 +812,48 @@ export function rubyHtmlToMarkup(html: string): string {
     for (const ruby of rubies) {
       if (!ruby.parentNode) continue;
 
+      // Mixed ruby (ruby + bouten/underline)?
+      if (ruby.classList.contains("ls-ruby-mixed")) {
+        const baseClone = ruby.cloneNode(true) as HTMLElement;
+        baseClone.querySelectorAll("rt, rp").forEach((n) => n.remove());
+        const base = (baseClone.textContent ?? "").trim();
+        const rt = firstDirectChildByTag(ruby, "rt");
+        const rubyText = rt ? (rt.textContent ?? "").trim() : "";
+        if (!base || !rubyText) continue;
+        const rubyOp = ruby.classList.contains("ls-ruby-over") ? "^^" : "^_";
+        const ulPat = underlinePatternFromClasses(ruby);
+        const isBoutenOver = ruby.classList.contains("ls-ruby-bouten-over");
+        const isBoutenUnder = ruby.classList.contains("ls-ruby-bouten-under");
+        let decoMarkup = "";
+        if (ulPat) {
+          decoMarkup = `^_(${ulPat})`;
+        } else if (isBoutenOver) {
+          decoMarkup = `^^(..)`;
+        } else if (isBoutenUnder) {
+          decoMarkup = `^_(..)`;
+        }
+        ruby.replaceWith(doc.createTextNode(`[${base}]${rubyOp}(${rubyText})${decoMarkup}`));
+        continue;
+      }
+
       // Nested double-level?
-      const innerRuby = ruby.querySelector(":scope > ruby");
+      const innerRuby = firstDirectChildByTag(ruby, "ruby");
       if (innerRuby) {
-        const outerRts = Array.from(ruby.querySelectorAll(":scope > rt")).map(
+        const outerRts = directChildrenByTag(ruby, "rt").map(
           (rt) => (rt.textContent ?? "").trim()
         ).filter(Boolean);
 
         const innerClone = innerRuby.cloneNode(true) as HTMLElement;
         innerClone.querySelectorAll("rt, rp").forEach((n) => n.remove());
         const base = (innerClone.textContent ?? "").trim();
-        const innerRts = Array.from(innerRuby.querySelectorAll(":scope > rt")).map(
+        const innerRts = directChildrenByTag(innerRuby, "rt").map(
           (rt) => (rt.textContent ?? "").trim()
         ).filter(Boolean);
 
         const levels = [...innerRts, ...outerRts].filter(Boolean);
         const ann = levels.join("|");
-        ruby.replaceWith(doc.createTextNode(ann ? `[${base}]^^(${ann})` : base));
+        const innerOp = innerRuby.classList.contains("ls-ruby-over") ? "^^" : "^_";
+        ruby.replaceWith(doc.createTextNode(ann ? `[${base}]${innerOp}(${ann})` : base));
         continue;
       }
 
@@ -800,15 +862,16 @@ export function rubyHtmlToMarkup(html: string): string {
       baseClone.querySelectorAll("rt, rp, rtc").forEach((n) => n.remove());
       const base = (baseClone.textContent ?? "").trim();
 
-      const rts = Array.from(ruby.querySelectorAll(":scope > rt")).map(
+      const rts = directChildrenByTag(ruby, "rt").map(
         (rt) => (rt.textContent ?? "").trim()
       );
-      const rtcs = Array.from(ruby.querySelectorAll(":scope > rtc")).map(
+      const rtcs = directChildrenByTag(ruby, "rtc").map(
         (rtc) => (rtc.textContent ?? "").trim()
       );
       const levels = [...rts, ...rtcs].filter(Boolean);
       const ann = levels.join("|");
-      ruby.replaceWith(doc.createTextNode(ann ? `[${base}]^^(${ann})` : base));
+      const op = ruby.classList.contains("ls-ruby-under") ? "^_" : "^^";
+      ruby.replaceWith(doc.createTextNode(ann ? `[${base}]${op}(${ann})` : base));
     }
     rubies = Array.from(root.querySelectorAll("ruby"));
   }
@@ -881,7 +944,7 @@ export function replaceRubyInElement(el: HTMLElement): void {
     const html = el.innerHTML;
     if (!hasRuby(html)) return;
 
-    const protectRe = /<(code|pre|a |a>|ruby|script|style)[\s\S]*?<\/\1>/gi;
+    const protectRe = /<(code|pre|a|ruby|script|style)\b[\s\S]*?<\/\1>/gi;
     const saved: string[] = [];
     const tokenized = html.replace(protectRe, (match) => {
       const idx = saved.length;
