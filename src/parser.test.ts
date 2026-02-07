@@ -205,22 +205,22 @@ describe("rubyToHTML — pipe-separated special patterns", () => {
 describe("rubyToHTML — bouten", () => {
   it("^^(..) over", () => {
     expect(rubyToHTML("[漢字]^^(..)")).toBe(
-      '<span class="ls-ruby-bouten ls-ruby-bouten-over">漢字</span>'
+      '<span class="ls-ruby-bouten ls-ruby-bouten-over" style="text-emphasis:filled dot;-webkit-text-emphasis:filled dot;text-emphasis-position:over right;-webkit-text-emphasis-position:over right">漢字</span>'
     );
   });
   it("^_(..) under", () => {
     expect(rubyToHTML("[漢字]^_(..)")).toBe(
-      '<span class="ls-ruby-bouten ls-ruby-bouten-under">漢字</span>'
+      '<span class="ls-ruby-bouten ls-ruby-bouten-under" style="text-decoration:underline dotted;text-underline-offset:0.15em">漢字</span>'
     );
   });
   it("^^(..)^_(..) both → single span with over+under classes", () => {
     expect(rubyToHTML("[漢字]^^(..)^_(..)")).toBe(
-      '<span class="ls-ruby-bouten ls-ruby-bouten-over ls-ruby-bouten-under">漢字</span>'
+      '<span class="ls-ruby-bouten ls-ruby-bouten-over ls-ruby-bouten-under" style="text-emphasis:filled dot;-webkit-text-emphasis:filled dot;text-emphasis-position:over right;-webkit-text-emphasis-position:over right;text-decoration:underline dotted;text-underline-offset:0.15em">漢字</span>'
     );
   });
   it("^_(..)^^(..) reverse → same result", () => {
     expect(rubyToHTML("[漢字]^_(..)^^(..)")).toBe(
-      '<span class="ls-ruby-bouten ls-ruby-bouten-over ls-ruby-bouten-under">漢字</span>'
+      '<span class="ls-ruby-bouten ls-ruby-bouten-over ls-ruby-bouten-under" style="text-emphasis:filled dot;-webkit-text-emphasis:filled dot;text-emphasis-position:over right;-webkit-text-emphasis-position:over right;text-decoration:underline dotted;text-underline-offset:0.15em">漢字</span>'
     );
   });
   it("single dot NOT bouten", () => {
@@ -245,7 +245,7 @@ describe("rubyToHTML — bouten", () => {
 describe("rubyToHTML — underline", () => {
   it("[base]^_(.-)", () => {
     expect(rubyToHTML("[base]^_(.-)" )).toBe(
-      '<span class="ls-ruby-underline">base</span>'
+      '<span class="ls-ruby-underline" style="text-decoration-line:underline;text-underline-offset:0.15em">base</span>'
     );
   });
   it("only ^_ operator", () => {
@@ -263,12 +263,12 @@ describe("rubyToHTML — underline", () => {
   });
   it("wavy underline ^_(.~)", () => {
     expect(rubyToHTML("[base]^_(.~)")).toBe(
-      '<span class="ls-ruby-underline ls-ruby-underline-wavy">base</span>'
+      '<span class="ls-ruby-underline ls-ruby-underline-wavy" style="text-decoration-line:underline;text-underline-offset:0.15em;text-decoration-style:wavy">base</span>'
     );
   });
   it("double underline ^_(.=)", () => {
     expect(rubyToHTML("[base]^_(.=)")).toBe(
-      '<span class="ls-ruby-underline ls-ruby-underline-double">base</span>'
+      '<span class="ls-ruby-underline ls-ruby-underline-double" style="text-decoration-line:underline;text-underline-offset:0.15em;text-decoration-style:double">base</span>'
     );
   });
   it(".~ only with ^_ operator", () => {
@@ -521,6 +521,73 @@ describe("code protection", () => {
   it("anyToMarkup skips inline code", () => {
     const input = "text `{{renderer :ruby, a, b}}` more";
     expect(anyToMarkup(input)).toContain("`{{renderer :ruby, a, b}}`");
+  });
+  it("code preserved when mixed with HTML ruby (Issue 1)", () => {
+    const input = '`cat^_(/kæt/)` <ruby class="ls-ruby ls-ruby-under">cat<rp>(</rp><rt>/kæt/</rt><rp>)</rp></ruby>';
+    const result = anyToMarkup(input);
+    expect(result).toContain("`cat^_(/kæt/)`");
+    expect(result).toContain("[cat]^_(/kæt/)");
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Inline styles portability
+// ---------------------------------------------------------------------------
+describe("inline styles", () => {
+  it("bouten over has inline text-emphasis", () => {
+    const r = rubyToHTML("[漢字]^^(..)");
+    expect(r).toContain('style="');
+    expect(r).toContain("text-emphasis:filled dot");
+  });
+  it("bouten under has inline text-decoration", () => {
+    const r = rubyToHTML("[漢字]^_(..)");
+    expect(r).toContain('style="');
+    expect(r).toContain("text-decoration:underline dotted");
+  });
+  it("underline has inline style", () => {
+    const r = rubyToHTML("[base]^_(.-)");
+    expect(r).toContain('style="');
+    expect(r).toContain("text-decoration-line:underline");
+  });
+  it("ruby under has inline ruby-position", () => {
+    const r = rubyToHTML("[base]^_(ann)");
+    expect(r).toContain('style="ruby-position:under"');
+  });
+  it("ruby over has no inline ruby-position", () => {
+    const r = rubyToHTML("[base]^^(ann)");
+    expect(r).not.toContain('style=');
+  });
+  it("nested ruby under has inline style", () => {
+    const r = rubyToHTML("[北京]^^(Beijing|PKG)");
+    expect(r).toContain('style="ruby-position:under"');
+  });
+  it("mixed ruby + bouten has inline styles", () => {
+    const r = rubyToHTML("[漢字]^^(a)^_(..)");
+    expect(r).toContain('style="');
+    expect(r).toContain("text-decoration:underline dotted");
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Auto-hide wrapping
+// ---------------------------------------------------------------------------
+describe("auto-hide wrapping", () => {
+  it("hidden chars wrapped in empty-rt ruby (Issue 5)", () => {
+    const r = rubyToHTML("[振り仮名]^^(ふ り が な)");
+    // り should be wrapped in ruby with empty rt, not bare text
+    expect(r).toContain('<ruby class="ls-ruby ls-ruby-over">り<rp>(</rp><rt></rt><rp>)</rp></ruby>');
+    expect(r).toContain("<rt>ふ</rt>");
+    expect(r).toContain("<rt>が</rt>");
+    expect(r).toContain("<rt>な</rt>");
+  });
+  it("round-trip auto-hidden ruby back to markup", () => {
+    const html = rubyToHTML("[振り仮名]^^(ふ り が な)");
+    const markup = anyToMarkup(html);
+    // Per-char info is baked in; り has empty annotation → bare char
+    expect(markup).toContain("[振]^^(ふ)");
+    expect(markup).toContain("り");
+    expect(markup).toContain("[仮]^^(が)");
+    expect(markup).toContain("[名]^^(な)");
   });
 });
 

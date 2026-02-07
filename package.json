@@ -1,6 +1,6 @@
 {
   "name": "logseq-furigana-ruby",
-  "version": "0.3.3",
+  "version": "0.4.0",
   "description": "Logseq plugin that renders [base]^^(annotation) ruby/furigana markup.",
   "main": "dist/index.html",
   "author": "Baksi Li <myself@baksili.codes>",
@@ -19,7 +19,10 @@
     "dev": "vite",
     "build": "tsc && vite build",
     "test": "vitest run",
-    "test:watch": "vitest"
+    "test:watch": "vitest",
+    "convert": "node tools/convert.js",
+    "examples": "node tools/generate-examples.js",
+    "tools": "echo 'Available tools: convert, examples. See tools/README.md for usage.'"
   },
   "license": "MIT",
   "dependencies": {

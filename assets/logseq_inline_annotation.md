@@ -1,0 +1,24 @@
+- ### Above (`^^`)
+	- `漢字^^(かんじ)` 漢字^^(かんじ)
+	- `**H**₂O^^(**Hydrogen** Dioxide)` H₂O^^(Hydrogen Dioxide)
+- ### Below (`^_`)
+	- `cat^_(/kæt/)` <ruby class="ls-ruby ls-ruby-under">cat<rp>(</rp><rt>/kæt/</rt><rp>)</rp></ruby>
+- ### Both
+	- `北京^^(Beijing|PKG)` 北京^^(Beijing|PKG)
+		- `[base]^^(over)^_(under)` [base]^^(over)^_(under)
+- ### Special
+	- `漢字^^(..)` [漢字]^^(..)
+	- `漢字^_(..)` 漢字^_(..)
+	- `漢字^_(.-)` 漢字^_(.-)
+	- `漢字^_(.=)` 漢字^_(.=)
+	- `漢字^_(.~)` 漢字^_(.~)
+	- `漢字^_(..)^^(.~)` 漢字^_(.~)^^(..)
+- ### Advanced Features
+	- Alignment (space-separated groups)
+		- `[我是你大爺]^^(wǒ shì nǐ dà yé)` [我是你大爺]^^(wǒ shì nǐ dà yé)
+		- `[李太白]^^(Lǐ Tài Bái|ㄌㄧˇ ㄊㄞˋ ㄅㄞˊ)` [李太白]^^(Lǐ Tài Bái|ㄌㄧˇ ㄊㄞˋ ㄅㄞˊ)
+	- Auto-hidden
+		- `[取り返す]^^(と り かえ す)` [取り返す]^^(と り かえ す)
+		- `[振り仮名]^^(ふ り が な)` [振り仮名]^^(ふ り が な)
+	- Partially overlapping ruby
+		- `[[護]^^(まも)れ]^_(プロテゴ)` [[護]^^(まも)れ]^_(プロテゴ)

@@ -99,6 +99,35 @@ function findOpenBracket(input: string, closeBracketIdx: number): number {
 }
 
 // ---------------------------------------------------------------------------
+// Inline style constants (for HTML portability outside Logseq)
+// ---------------------------------------------------------------------------
+
+const STYLE_BOUTEN_OVER = "text-emphasis:filled dot;-webkit-text-emphasis:filled dot;text-emphasis-position:over right;-webkit-text-emphasis-position:over right";
+const STYLE_BOUTEN_UNDER = "text-decoration:underline dotted;text-underline-offset:0.15em";
+const STYLE_RUBY_UNDER = "ruby-position:under";
+
+function underlineInlineStyle(style: UnderlineStyle): string {
+  let s = "text-decoration-line:underline;text-underline-offset:0.15em";
+  if (style === "wavy") s += ";text-decoration-style:wavy";
+  else if (style === "double") s += ";text-decoration-style:double";
+  return s;
+}
+
+function boutenInlineStyle(op: RubyOp): string {
+  return op === "^^" ? STYLE_BOUTEN_OVER : STYLE_BOUTEN_UNDER;
+}
+
+/** Return ` style="..."` attr for under-positioned ruby, empty for over */
+function rubyPosAttr(pos: string): string {
+  return pos === "ls-ruby-under" ? ` style="${STYLE_RUBY_UNDER}"` : "";
+}
+
+/** Wrap a character in an empty-annotation ruby to preserve vertical spacing */
+function emptyRuby(char: string, pos: string): string {
+  return `<ruby class="ls-ruby ${pos}"${rubyPosAttr(pos)}>${char}<rp>(</rp><rt></rt><rp>)</rp></ruby>`;
+}
+
+// ---------------------------------------------------------------------------
 // Rendering helpers
 // ---------------------------------------------------------------------------
 
@@ -111,16 +140,16 @@ function findOpenBracket(input: string, closeBracketIdx: number): number {
  */
 function renderBouten(base: string, op: RubyOp): string {
   const pos = op === "^^" ? "ls-ruby-bouten-over" : "ls-ruby-bouten-under";
-  return `<span class="ls-ruby-bouten ${pos}">${unescape(base)}</span>`;
+  return `<span class="ls-ruby-bouten ${pos}" style="${boutenInlineStyle(op)}">${unescape(base)}</span>`;
 }
 
 function renderBoutenBoth(base: string): string {
   // Over = text-emphasis, Under = dotted underline, on the same element
-  return `<span class="ls-ruby-bouten ls-ruby-bouten-over ls-ruby-bouten-under">${unescape(base)}</span>`;
+  return `<span class="ls-ruby-bouten ls-ruby-bouten-over ls-ruby-bouten-under" style="${STYLE_BOUTEN_OVER};${STYLE_BOUTEN_UNDER}">${unescape(base)}</span>`;
 }
 
 function renderUnderline(base: string, style: UnderlineStyle = "solid"): string {
-  return `<span class="${underlineClasses(style)}">${unescape(base)}</span>`;
+  return `<span class="${underlineClasses(style)}" style="${underlineInlineStyle(style)}">${unescape(base)}</span>`;
 }
 
 /**
@@ -130,13 +159,15 @@ function renderRubyWithBouten(base: string, rubyText: string, rubyOp: RubyOp, bo
   const safeBase = unescape(base);
   const rubyPos = rubyOp === "^^" ? "ls-ruby-over" : "ls-ruby-under";
   const boutenPos = boutenOp === "^^" ? "over" : "under";
-  return `<ruby class="ls-ruby ls-ruby-mixed ${rubyPos} ls-ruby-bouten-${boutenPos}">${safeBase}<rp>(</rp><rt>${rubyText}</rt><rp>)</rp></ruby>`;
+  const styles = [rubyPos === "ls-ruby-under" ? STYLE_RUBY_UNDER : "", boutenInlineStyle(boutenOp)].filter(Boolean).join(";");
+  return `<ruby class="ls-ruby ls-ruby-mixed ${rubyPos} ls-ruby-bouten-${boutenPos}" style="${styles}">${safeBase}<rp>(</rp><rt>${rubyText}</rt><rp>)</rp></ruby>`;
 }
 
 function renderRubyWithUnderline(base: string, rubyText: string, rubyOp: RubyOp, style: UnderlineStyle = "solid"): string {
   const safeBase = unescape(base);
   const rubyPos = rubyOp === "^^" ? "ls-ruby-over" : "ls-ruby-under";
-  return `<ruby class="ls-ruby ls-ruby-mixed ${rubyPos} ${underlineClasses(style)}">${safeBase}<rp>(</rp><rt>${rubyText}</rt><rp>)</rp></ruby>`;
+  const styles = [rubyPos === "ls-ruby-under" ? STYLE_RUBY_UNDER : "", underlineInlineStyle(style)].filter(Boolean).join(";");
+  return `<ruby class="ls-ruby ls-ruby-mixed ${rubyPos} ${underlineClasses(style)}" style="${styles}">${safeBase}<rp>(</rp><rt>${rubyText}</rt><rp>)</rp></ruby>`;
 }
 
 /**
@@ -184,13 +215,13 @@ function renderRuby(base: string, op: RubyOp, levels: string[]): string {
         const hide1 = shouldHideAnnotation(char, a1);
         const hide2 = shouldHideAnnotation(char, a2);
         if (hide1 && hide2) {
-          result += char;
+          result += emptyRuby(char, innerPos);
         } else if (hide1) {
-          result += `<ruby class="ls-ruby ${outerPos}">${char}<rp>(</rp><rt>${a2}</rt><rp>)</rp></ruby>`;
+          result += `<ruby class="ls-ruby ${outerPos}"${rubyPosAttr(outerPos)}>${char}<rp>(</rp><rt>${a2}</rt><rp>)</rp></ruby>`;
         } else if (hide2) {
-          result += `<ruby class="ls-ruby ${innerPos}">${char}<rp>(</rp><rt>${a1}</rt><rp>)</rp></ruby>`;
+          result += `<ruby class="ls-ruby ${innerPos}"${rubyPosAttr(innerPos)}>${char}<rp>(</rp><rt>${a1}</rt><rp>)</rp></ruby>`;
         } else {
-          result += `<ruby class="ls-ruby ${outerPos} ls-ruby-double"><ruby class="ls-ruby ${innerPos}">${char}<rp>(</rp><rt>${a1}</rt><rp>)</rp></ruby><rp>(</rp><rt>${a2}</rt><rp>)</rp></ruby>`;
+          result += `<ruby class="ls-ruby ${outerPos} ls-ruby-double"${rubyPosAttr(outerPos)}><ruby class="ls-ruby ${innerPos}"${rubyPosAttr(innerPos)}>${char}<rp>(</rp><rt>${a1}</rt><rp>)</rp></ruby><rp>(</rp><rt>${a2}</rt><rp>)</rp></ruby>`;
         }
       }
       return result;
@@ -203,13 +234,13 @@ function renderRuby(base: string, op: RubyOp, levels: string[]): string {
         const char = baseChars[i];
         const ann = ann1Parts![i];
         if (shouldHideAnnotation(char, ann)) {
-          innerRubies += char;
+          innerRubies += emptyRuby(char, innerPos);
         } else {
-          innerRubies += `<ruby class="ls-ruby ${innerPos}">${char}<rp>(</rp><rt>${ann}</rt><rp>)</rp></ruby>`;
+          innerRubies += `<ruby class="ls-ruby ${innerPos}"${rubyPosAttr(innerPos)}>${char}<rp>(</rp><rt>${ann}</rt><rp>)</rp></ruby>`;
         }
       }
       return (
-        `<ruby class="ls-ruby ${outerPos} ls-ruby-double">` +
+        `<ruby class="ls-ruby ${outerPos} ls-ruby-double"${rubyPosAttr(outerPos)}>` +
         innerRubies +
         `<rp>(</rp><rt>${capped[1]}</rt><rp>)</rp></ruby>`
       );
@@ -222,13 +253,13 @@ function renderRuby(base: string, op: RubyOp, levels: string[]): string {
         const char = baseChars[i];
         const ann = ann2Parts![i];
         if (shouldHideAnnotation(char, ann)) {
-          innerRubies += char;
+          innerRubies += emptyRuby(char, outerPos);
         } else {
-          innerRubies += `<ruby class="ls-ruby ${outerPos}">${char}<rp>(</rp><rt>${ann}</rt><rp>)</rp></ruby>`;
+          innerRubies += `<ruby class="ls-ruby ${outerPos}"${rubyPosAttr(outerPos)}>${char}<rp>(</rp><rt>${ann}</rt><rp>)</rp></ruby>`;
         }
       }
       return (
-        `<ruby class="ls-ruby ${innerPos} ls-ruby-double">` +
+        `<ruby class="ls-ruby ${innerPos} ls-ruby-double"${rubyPosAttr(innerPos)}>` +
         innerRubies +
         `<rp>(</rp><rt>${capped[0]}</rt><rp>)</rp></ruby>`
       );
@@ -236,8 +267,8 @@ function renderRuby(base: string, op: RubyOp, levels: string[]): string {
 
     // Neither can align: standard double-level group ruby
     return (
-      `<ruby class="ls-ruby ${outerPos} ls-ruby-double">` +
-      `<ruby class="ls-ruby ${innerPos}">${safeBase}<rp>(</rp><rt>${capped[0]}</rt><rp>)</rp></ruby>` +
+      `<ruby class="ls-ruby ${outerPos} ls-ruby-double"${rubyPosAttr(outerPos)}>` +
+      `<ruby class="ls-ruby ${innerPos}"${rubyPosAttr(innerPos)}>${safeBase}<rp>(</rp><rt>${capped[0]}</rt><rp>)</rp></ruby>` +
       `<rp>(</rp><rt>${capped[1]}</rt><rp>)</rp></ruby>`
     );
   }
@@ -252,9 +283,9 @@ function renderRuby(base: string, op: RubyOp, levels: string[]): string {
         const char = baseChars[i];
         const ann = annParts[i];
         if (shouldHideAnnotation(char, ann)) {
-          result += char;
+          result += emptyRuby(char, pos);
         } else {
-          result += `<ruby class="ls-ruby ${pos}">${char}<rp>(</rp><rt>${ann}</rt><rp>)</rp></ruby>`;
+          result += `<ruby class="ls-ruby ${pos}"${rubyPosAttr(pos)}>${char}<rp>(</rp><rt>${ann}</rt><rp>)</rp></ruby>`;
         }
       }
       return result;
@@ -264,15 +295,15 @@ function renderRuby(base: string, op: RubyOp, levels: string[]): string {
   // --- Fallback: standard group ruby ---
   if (capped.length === 1) {
     const pos = op === "^^" ? "ls-ruby-over" : "ls-ruby-under";
-    return `<ruby class="ls-ruby ${pos}">${safeBase}<rp>(</rp><rt>${capped[0]}</rt><rp>)</rp></ruby>`;
+    return `<ruby class="ls-ruby ${pos}"${rubyPosAttr(pos)}>${safeBase}<rp>(</rp><rt>${capped[0]}</rt><rp>)</rp></ruby>`;
   }
 
   // Two levels group: nested <ruby> (Chromium doesn't support <rtc>)
   const innerPos = op === "^^" ? "ls-ruby-over" : "ls-ruby-under";
   const outerPos = op === "^^" ? "ls-ruby-under" : "ls-ruby-over";
   return (
-    `<ruby class="ls-ruby ${outerPos} ls-ruby-double">` +
-    `<ruby class="ls-ruby ${innerPos}">${safeBase}<rp>(</rp><rt>${capped[0]}</rt><rp>)</rp></ruby>` +
+    `<ruby class="ls-ruby ${outerPos} ls-ruby-double"${rubyPosAttr(outerPos)}>` +
+    `<ruby class="ls-ruby ${innerPos}"${rubyPosAttr(innerPos)}>${safeBase}<rp>(</rp><rt>${capped[0]}</rt><rp>)</rp></ruby>` +
     `<rp>(</rp><rt>${capped[1]}</rt><rp>)</rp></ruby>`
   );
 }
@@ -289,10 +320,11 @@ interface ProtectedContent {
 function protectCode(content: string): ProtectedContent {
   const tokens: string[] = [];
   // Protect fenced code blocks (```...```) and inline code (`...`)
+  // Use \uE000 (PUA char) as sentinel — survives DOMParser unlike \x00
   const result = content.replace(/```[\s\S]*?```|`[^`]+`/g, (match) => {
     const idx = tokens.length;
     tokens.push(match);
-    return `\x00CODE${idx}\x00`;
+    return `\uE000CODE${idx}\uE000`;
   });
   return { result, tokens };
 }
@@ -300,7 +332,7 @@ function protectCode(content: string): ProtectedContent {
 function restoreCode(content: string, tokens: string[]): string {
   let result = content;
   for (let i = 0; i < tokens.length; i++) {
-    result = result.split(`\x00CODE${i}\x00`).join(tokens[i]);
+    result = result.split(`\uE000CODE${i}\uE000`).join(tokens[i]);
   }
   return result;
 }
@@ -435,7 +467,8 @@ function rubyToHTMLPass(input: string): string {
       if ((isBouten1 && isUnderline2) || (isUnderline1 && isBouten2)) {
         const boutenOp = isBouten1 ? op : op2;
         const ulStyle = isUnderline1 ? ulStyle1! : ulStyle2!;
-        out += `<span class="ls-ruby-bouten ls-ruby-bouten-${boutenOp === "^^" ? "over" : "under"} ${underlineClasses(ulStyle)}">${unescape(baseHtml)}</span>`;
+        const comboStyle = [boutenInlineStyle(boutenOp!), underlineInlineStyle(ulStyle)].join(";");
+        out += `<span class="ls-ruby-bouten ls-ruby-bouten-${boutenOp === "^^" ? "over" : "under"} ${underlineClasses(ulStyle)}" style="${comboStyle}">${unescape(baseHtml)}</span>`;
       }
       // Bouten + Bouten (both dots)
       else if (isBouten1 && isBouten2) {
@@ -520,7 +553,8 @@ function rubyToHTMLPass(input: string): string {
           } else if ((isInnerBouten || isOuterBouten) && (isInnerUnderline || isOuterUnderline)) {
             const boutenOp = isInnerBouten ? innerOp : outerOp;
             const pipeUlStyle = isInnerUnderline ? innerUlStyle! : outerUlStyle!;
-            out += `<span class="ls-ruby-bouten ls-ruby-bouten-${boutenOp === "^^" ? "over" : "under"} ${underlineClasses(pipeUlStyle)}">${unescape(baseHtml)}</span>`;
+            const comboStyle2 = [boutenInlineStyle(boutenOp), underlineInlineStyle(pipeUlStyle)].join(";");
+            out += `<span class="ls-ruby-bouten ls-ruby-bouten-${boutenOp === "^^" ? "over" : "under"} ${underlineClasses(pipeUlStyle)}" style="${comboStyle2}">${unescape(baseHtml)}</span>`;
           } else {
             out += renderUnderline(baseHtml, innerUlStyle!);
           }

@@ -15,6 +15,7 @@ async function main() {
   // ---------------------------------------------------------------------------
   logseq.provideStyle(`
     /* Base ruby */
+    ruby.ls-ruby { display: ruby; }
     ruby.ls-ruby rt { font-size: 0.6em; line-height: 1; }
     ruby.ls-ruby rtc rt { font-size: 0.6em; line-height: 1; }
 

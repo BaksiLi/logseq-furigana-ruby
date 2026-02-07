@@ -14,3 +14,18 @@ coverage/
 # Mac junk
 ._*
 
+# Test outputs and converted files
+*.converted.*
+*_converted.*
+*.output.*
+*_output.*
+
+# Tool generated files
+tools/output/
+temp/
+tmp/
+
+# Generated HTML (generator scripts in tools/ stay tracked)
+demo.html
+examples.html
+test-results.html
