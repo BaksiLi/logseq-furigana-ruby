@@ -29,3 +29,7 @@ tmp/
 demo.html
 examples.html
 test-results.html
+
+# Local release artifacts
+release/
+logseq-furigana-ruby.zip

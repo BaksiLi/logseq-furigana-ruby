@@ -1,6 +1,6 @@
 {
   "name": "logseq-furigana-ruby",
-  "version": "0.4.0",
+  "version": "0.4.1",
   "description": "Logseq plugin that renders [base]^^(annotation) ruby/furigana markup.",
   "main": "dist/index.html",
   "author": "Baksi Li <myself@baksili.codes>",
@@ -40,6 +40,6 @@
   "logseq": {
     "id": "_baksili_logseq-furigana-ruby",
     "title": "Furigana Ruby (^^ Syntax)",
-    "icon": "icon.svg"
+    "icon": "icon.png"
   }
 }

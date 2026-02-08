@@ -34,14 +34,16 @@ jobs:
         run: |
           mkdir -p release
           # 複製構建產物和必要文件到 release 文件夾
-          cp -r dist/* release/
+          cp -r dist release/
           cp package.json release/
-          cp icon.svg release/
+          cp manifest.json release/
+          cp icon.png release/
           cp README.md release/
           cp LICENSE release/
-          
+           
           # 進入 release 文件夾打包 (這樣解壓後不會多一層目錄)
           cd release
+          rm -f ../logseq-furigana-ruby.zip
           zip -r ../logseq-furigana-ruby.zip .
 
       - name: Create Release

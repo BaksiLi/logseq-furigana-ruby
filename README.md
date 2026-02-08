@@ -7,7 +7,7 @@ Logseq plugin for inline annotation using the `^^()`/`^_()` syntax.
 
 ## Basic Syntax
 
-![Showcase](./assets/showcase.png)
+![Showcase](./assets/logseq_showcase.png)
 
 📖 **[Full showcase](./assets/logseq_inline_annotation.md)** — Example annotations; open in Logseq with the plugin for live rendering.
 
