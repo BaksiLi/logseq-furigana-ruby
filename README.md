@@ -28,7 +28,7 @@ Supports various ruby annotation styles:
 - `[北京]^^(ペキン|Beijing)` — annotation two-level (above + below)
     > <ruby class="ia-ruby ia-ruby-under ia-ruby-double"><ruby class="ia-ruby ia-ruby-over">北京<rp>(</rp><rt>ペキン</rt><rp>)</rp></ruby><rp>(</rp><rt>Beijing</rt><rp>)</rp></ruby>
 
-N.B. `base^^(ruby)` – `[]` can be ommitted.
+N.B. `base^^(ruby)` - `[]` can be omitted.
 
 #### Per-Character Ruby (rendering)
 - `[春夏秋冬]^^(はる なつ あき ふゆ)` — auto-aligns each character with its annotation
@@ -65,6 +65,12 @@ Use macros when you need multiple ruby annotations on the same line (avoids Logs
 {{renderer :ruby, base, annotation, under}}
 {{renderer :ruby, 漢字, ..}}
 ```
+
+Recommended Logseq workflow:
+
+- Use inline markup when the block has one annotation or when portable Markdown source matters.
+- Use `/Ruby → macro` on selected blocks when a Logseq block contains several `^^()` / `^_()` annotations.
+- Use `/Ruby → HTML (one-way)` when you want the rendered result to survive Logseq parsing exactly; this is one-way for per-character alignment and auto-hidden annotations.
 
 ## Use Cases
 
@@ -114,17 +120,17 @@ Three conversion targets — works on **selected blocks** or current block:
 |---------|-------------|
 | `/Ruby → markup` | Convert HTML / macros → `[base]^^(ann)` syntax |
 | `/Ruby → macro` | Convert markup / HTML → `{{renderer :ruby, …}}` |
-| `/Ruby → HTML` | Convert markup / macros → raw `<ruby>` HTML (**one-way** — per-character alignment and auto-hide are baked in) |
+| `/Ruby → HTML (one-way)` | Convert markup / macros → raw `<ruby>` HTML (**one-way** — per-character alignment and auto-hide are baked in) |
 
 ## Known Limitations (Logseq)
 
 > Logseq parses its own markdown **before** plugins run, and there is currently [no markdown post‑processor API](https://discuss.logseq.com/t/plugin-api-how-to-modify-the-way-markdown-is-render/17313/5).
 
-- **Multiple inline `^^()` / `^_()`** – conflicts with Logseq’s highlight (`^^text^^`) and italic (`_text_`).  
+- **Multiple inline `^^()` / `^_()` in one block** - may be consumed by Logseq's built-in highlight (`^^text^^`) or italic (`_text_`) parser before this plugin sees the source. Use `/Ruby → macro` for editable Logseq-native content, or `/Ruby → HTML (one-way)` for fixed visual output.
 
-- **`\|` inside annotations** – Logseq strips the backslash first, so `\|` becomes a bare `|` and is treated as a level separator.  
+- **`\|` inside annotations** - Logseq strips the backslash first, so `\|` can become a bare `|` and be treated as a level separator. Use macro syntax when a literal pipe must be preserved in Logseq.
 
-In practice, you can always bypass these issues by either using `\^\^` escape letters, or converting to **macro** or **HTML** using the slash commands.
+The same inline source is still valid for the markdown-it package and future non-Logseq adapters. These limitations are Logseq host-parser behavior, not part of the Inline Annotation grammar.
 
 ## Install (Manual)
 

@@ -22,6 +22,9 @@ type RubyOp = "^^" | "^_";
 
 const OP_REGEX = /\^(?:\^|_)\(/g;
 const BOUTEN_PATTERN = "..";
+const ABBREVIATED_BOUNDARY_CHARS = "[]<>`*&!";
+const GENERATED_ANNOTATION_HTML_RE =
+  /<(?:ruby|span)\b[^>]*\bclass=(?:"[^"]*\bia-(?:ruby|bouten|underline)\b[^"]*"|'[^']*\bia-(?:ruby|bouten|underline)\b[^']*')/i;
 
 type UnderlineStyle = "solid" | "wavy" | "double";
 
@@ -67,6 +70,51 @@ function unescape(input: string): string {
   return input.replace(/\\(.)/g, "$1");
 }
 
+function escapeHtml(input: string): string {
+  return input
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;");
+}
+
+function escapeMarkupBase(input: string): string {
+  return input.replace(/\\/g, "\\\\").replace(/\[/g, "\\[").replace(/\]/g, "\\]");
+}
+
+function escapeMarkupAnnotation(input: string): string {
+  return input.replace(/\\/g, "\\\\").replace(/\|/g, "\\|").replace(/\)/g, "\\)");
+}
+
+function escapeMarkupAnnotationLevels(levels: string[]): string {
+  return levels.map(escapeMarkupAnnotation).join("|");
+}
+
+function formatRubyMarkup(base: string, op: RubyOp, annotation: string): string {
+  return `[${escapeMarkupBase(base)}]${op}(${escapeMarkupAnnotation(annotation)})`;
+}
+
+function formatRubyMarkupLevels(base: string, op: RubyOp, levels: string[]): string {
+  return `[${escapeMarkupBase(base)}]${op}(${escapeMarkupAnnotationLevels(levels)})`;
+}
+
+function escapeMacroAnnotation(input: string): string {
+  return input.replace(/\\/g, "\\\\").replace(/\|/g, "\\|");
+}
+
+function formatMacroAnnotationLevels(levels: string[]): string {
+  return levels.map(escapeMacroAnnotation).join("|");
+}
+
+function hasRenderedAnnotationHtml(input: string): boolean {
+  return GENERATED_ANNOTATION_HTML_RE.test(input);
+}
+
+function escapedBaseHtml(input: string, allowRenderedAnnotationHtml = false): string {
+  const text = unescape(input);
+  return allowRenderedAnnotationHtml && hasRenderedAnnotationHtml(text) ? text : escapeHtml(text);
+}
+
 function splitByUnescapedPipe(input: string): string[] {
   const out: string[] = [];
   let buf = "";
@@ -96,6 +144,17 @@ function findOpenBracket(input: string, closeBracketIdx: number): number {
     if (input[i] === "[" && !isEscaped(input, i)) return i;
   }
   return -1;
+}
+
+function findAbbreviatedBaseStart(input: string, opStart: number): number {
+  let k = opStart - 1;
+  while (k >= 0) {
+    const ch = input[k];
+    if (/\s/.test(ch)) break;
+    if (ABBREVIATED_BOUNDARY_CHARS.includes(ch) && !isEscaped(input, k)) break;
+    k--;
+  }
+  return k + 1;
 }
 
 // ---------------------------------------------------------------------------
@@ -138,36 +197,36 @@ function emptyRuby(char: string, pos: string): string {
  *   is unreliably clipped by Logseq's Electron container. Dotted underline
  *   is semantically close and renders stably.
  */
-function renderBouten(base: string, op: RubyOp): string {
+function renderBouten(base: string, op: RubyOp, allowRenderedBaseHtml = false): string {
   const pos = op === "^^" ? "ia-bouten-over" : "ia-bouten-under";
-  return `<span class="ia-bouten ${pos}" style="${boutenInlineStyle(op)}">${unescape(base)}</span>`;
+  return `<span class="ia-bouten ${pos}" style="${boutenInlineStyle(op)}">${escapedBaseHtml(base, allowRenderedBaseHtml)}</span>`;
 }
 
-function renderBoutenBoth(base: string): string {
+function renderBoutenBoth(base: string, allowRenderedBaseHtml = false): string {
   // Over = text-emphasis, Under = dotted underline, on the same element
-  return `<span class="ia-bouten ia-bouten-over ia-bouten-under" style="${STYLE_BOUTEN_OVER};${STYLE_BOUTEN_UNDER}">${unescape(base)}</span>`;
+  return `<span class="ia-bouten ia-bouten-over ia-bouten-under" style="${STYLE_BOUTEN_OVER};${STYLE_BOUTEN_UNDER}">${escapedBaseHtml(base, allowRenderedBaseHtml)}</span>`;
 }
 
-function renderUnderline(base: string, style: UnderlineStyle = "solid"): string {
-  return `<span class="${underlineClasses(style)}" style="${underlineInlineStyle(style)}">${unescape(base)}</span>`;
+function renderUnderline(base: string, style: UnderlineStyle = "solid", allowRenderedBaseHtml = false): string {
+  return `<span class="${underlineClasses(style)}" style="${underlineInlineStyle(style)}">${escapedBaseHtml(base, allowRenderedBaseHtml)}</span>`;
 }
 
 /**
  * Render mixed: ruby annotation on one side + bouten/underline on the other
  */
-function renderRubyWithBouten(base: string, rubyText: string, rubyOp: RubyOp, boutenOp: RubyOp): string {
-  const safeBase = unescape(base);
+function renderRubyWithBouten(base: string, rubyText: string, rubyOp: RubyOp, boutenOp: RubyOp, allowRenderedBaseHtml = false): string {
+  const safeBase = escapedBaseHtml(base, allowRenderedBaseHtml);
   const rubyPos = rubyOp === "^^" ? "ia-ruby-over" : "ia-ruby-under";
   const boutenPos = boutenOp === "^^" ? "over" : "under";
   const styles = [rubyPos === "ia-ruby-under" ? STYLE_RUBY_UNDER : "", boutenInlineStyle(boutenOp)].filter(Boolean).join(";");
-  return `<ruby class="ia-ruby ia-ruby-mixed ${rubyPos} ia-bouten-${boutenPos}" style="${styles}">${safeBase}<rp>(</rp><rt>${rubyText}</rt><rp>)</rp></ruby>`;
+  return `<ruby class="ia-ruby ia-ruby-mixed ${rubyPos} ia-bouten-${boutenPos}" style="${styles}">${safeBase}<rp>(</rp><rt>${escapeHtml(rubyText)}</rt><rp>)</rp></ruby>`;
 }
 
-function renderRubyWithUnderline(base: string, rubyText: string, rubyOp: RubyOp, style: UnderlineStyle = "solid"): string {
-  const safeBase = unescape(base);
+function renderRubyWithUnderline(base: string, rubyText: string, rubyOp: RubyOp, style: UnderlineStyle = "solid", allowRenderedBaseHtml = false): string {
+  const safeBase = escapedBaseHtml(base, allowRenderedBaseHtml);
   const rubyPos = rubyOp === "^^" ? "ia-ruby-over" : "ia-ruby-under";
   const styles = [rubyPos === "ia-ruby-under" ? STYLE_RUBY_UNDER : "", underlineInlineStyle(style)].filter(Boolean).join(";");
-  return `<ruby class="ia-ruby ia-ruby-mixed ${rubyPos} ${underlineClasses(style)}" style="${styles}">${safeBase}<rp>(</rp><rt>${rubyText}</rt><rp>)</rp></ruby>`;
+  return `<ruby class="ia-ruby ia-ruby-mixed ${rubyPos} ${underlineClasses(style)}" style="${styles}">${safeBase}<rp>(</rp><rt>${escapeHtml(rubyText)}</rt><rp>)</rp></ruby>`;
 }
 
 /**
@@ -191,10 +250,10 @@ function shouldHideAnnotation(baseChar: string, annotation: string): boolean {
   return baseChar === annotation;
 }
 
-function renderRuby(base: string, op: RubyOp, levels: string[]): string {
-  const safeBase = unescape(base);
+function renderRuby(base: string, op: RubyOp, levels: string[], allowRenderedBaseHtml = false): string {
+  const safeBase = escapedBaseHtml(base, allowRenderedBaseHtml);
   const capped = levels.slice(0, 2);
-  const baseChars = Array.from(safeBase);
+  const baseChars = Array.from(unescape(base));
 
   // --- Two levels: try per-character alignment independently for each level ---
   if (capped.length === 2) {
@@ -215,13 +274,13 @@ function renderRuby(base: string, op: RubyOp, levels: string[]): string {
         const hide1 = shouldHideAnnotation(char, a1);
         const hide2 = shouldHideAnnotation(char, a2);
         if (hide1 && hide2) {
-          result += emptyRuby(char, innerPos);
+          result += emptyRuby(escapeHtml(char), innerPos);
         } else if (hide1) {
-          result += `<ruby class="ia-ruby ${outerPos}"${rubyPosAttr(outerPos)}>${char}<rp>(</rp><rt>${a2}</rt><rp>)</rp></ruby>`;
+          result += `<ruby class="ia-ruby ${outerPos}"${rubyPosAttr(outerPos)}>${escapeHtml(char)}<rp>(</rp><rt>${escapeHtml(a2)}</rt><rp>)</rp></ruby>`;
         } else if (hide2) {
-          result += `<ruby class="ia-ruby ${innerPos}"${rubyPosAttr(innerPos)}>${char}<rp>(</rp><rt>${a1}</rt><rp>)</rp></ruby>`;
+          result += `<ruby class="ia-ruby ${innerPos}"${rubyPosAttr(innerPos)}>${escapeHtml(char)}<rp>(</rp><rt>${escapeHtml(a1)}</rt><rp>)</rp></ruby>`;
         } else {
-          result += `<ruby class="ia-ruby ${outerPos} ia-ruby-double"${rubyPosAttr(outerPos)}><ruby class="ia-ruby ${innerPos}"${rubyPosAttr(innerPos)}>${char}<rp>(</rp><rt>${a1}</rt><rp>)</rp></ruby><rp>(</rp><rt>${a2}</rt><rp>)</rp></ruby>`;
+          result += `<ruby class="ia-ruby ${outerPos} ia-ruby-double"${rubyPosAttr(outerPos)}><ruby class="ia-ruby ${innerPos}"${rubyPosAttr(innerPos)}>${escapeHtml(char)}<rp>(</rp><rt>${escapeHtml(a1)}</rt><rp>)</rp></ruby><rp>(</rp><rt>${escapeHtml(a2)}</rt><rp>)</rp></ruby>`;
         }
       }
       return result;
@@ -234,15 +293,15 @@ function renderRuby(base: string, op: RubyOp, levels: string[]): string {
         const char = baseChars[i];
         const ann = ann1Parts![i];
         if (shouldHideAnnotation(char, ann)) {
-          innerRubies += emptyRuby(char, innerPos);
+          innerRubies += emptyRuby(escapeHtml(char), innerPos);
         } else {
-          innerRubies += `<ruby class="ia-ruby ${innerPos}"${rubyPosAttr(innerPos)}>${char}<rp>(</rp><rt>${ann}</rt><rp>)</rp></ruby>`;
+          innerRubies += `<ruby class="ia-ruby ${innerPos}"${rubyPosAttr(innerPos)}>${escapeHtml(char)}<rp>(</rp><rt>${escapeHtml(ann)}</rt><rp>)</rp></ruby>`;
         }
       }
       return (
         `<ruby class="ia-ruby ${outerPos} ia-ruby-double"${rubyPosAttr(outerPos)}>` +
         innerRubies +
-        `<rp>(</rp><rt>${capped[1]}</rt><rp>)</rp></ruby>`
+        `<rp>(</rp><rt>${escapeHtml(capped[1])}</rt><rp>)</rp></ruby>`
       );
     }
 
@@ -253,23 +312,23 @@ function renderRuby(base: string, op: RubyOp, levels: string[]): string {
         const char = baseChars[i];
         const ann = ann2Parts![i];
         if (shouldHideAnnotation(char, ann)) {
-          innerRubies += emptyRuby(char, outerPos);
+          innerRubies += emptyRuby(escapeHtml(char), outerPos);
         } else {
-          innerRubies += `<ruby class="ia-ruby ${outerPos}"${rubyPosAttr(outerPos)}>${char}<rp>(</rp><rt>${ann}</rt><rp>)</rp></ruby>`;
+          innerRubies += `<ruby class="ia-ruby ${outerPos}"${rubyPosAttr(outerPos)}>${escapeHtml(char)}<rp>(</rp><rt>${escapeHtml(ann)}</rt><rp>)</rp></ruby>`;
         }
       }
       return (
         `<ruby class="ia-ruby ${innerPos} ia-ruby-double"${rubyPosAttr(innerPos)}>` +
         innerRubies +
-        `<rp>(</rp><rt>${capped[0]}</rt><rp>)</rp></ruby>`
+        `<rp>(</rp><rt>${escapeHtml(capped[0])}</rt><rp>)</rp></ruby>`
       );
     }
 
     // Neither can align: standard double-level group ruby
     return (
       `<ruby class="ia-ruby ${outerPos} ia-ruby-double"${rubyPosAttr(outerPos)}>` +
-      `<ruby class="ia-ruby ${innerPos}"${rubyPosAttr(innerPos)}>${safeBase}<rp>(</rp><rt>${capped[0]}</rt><rp>)</rp></ruby>` +
-      `<rp>(</rp><rt>${capped[1]}</rt><rp>)</rp></ruby>`
+      `<ruby class="ia-ruby ${innerPos}"${rubyPosAttr(innerPos)}>${safeBase}<rp>(</rp><rt>${escapeHtml(capped[0])}</rt><rp>)</rp></ruby>` +
+      `<rp>(</rp><rt>${escapeHtml(capped[1])}</rt><rp>)</rp></ruby>`
     );
   }
 
@@ -283,9 +342,9 @@ function renderRuby(base: string, op: RubyOp, levels: string[]): string {
         const char = baseChars[i];
         const ann = annParts[i];
         if (shouldHideAnnotation(char, ann)) {
-          result += emptyRuby(char, pos);
+          result += emptyRuby(escapeHtml(char), pos);
         } else {
-          result += `<ruby class="ia-ruby ${pos}"${rubyPosAttr(pos)}>${char}<rp>(</rp><rt>${ann}</rt><rp>)</rp></ruby>`;
+          result += `<ruby class="ia-ruby ${pos}"${rubyPosAttr(pos)}>${escapeHtml(char)}<rp>(</rp><rt>${escapeHtml(ann)}</rt><rp>)</rp></ruby>`;
         }
       }
       return result;
@@ -295,7 +354,7 @@ function renderRuby(base: string, op: RubyOp, levels: string[]): string {
   // --- Fallback: standard group ruby ---
   if (capped.length === 1) {
     const pos = op === "^^" ? "ia-ruby-over" : "ia-ruby-under";
-    return `<ruby class="ia-ruby ${pos}"${rubyPosAttr(pos)}>${safeBase}<rp>(</rp><rt>${capped[0]}</rt><rp>)</rp></ruby>`;
+    return `<ruby class="ia-ruby ${pos}"${rubyPosAttr(pos)}>${safeBase}<rp>(</rp><rt>${escapeHtml(capped[0])}</rt><rp>)</rp></ruby>`;
   }
 
   // Two levels group: nested <ruby> (Chromium doesn't support <rtc>)
@@ -303,8 +362,8 @@ function renderRuby(base: string, op: RubyOp, levels: string[]): string {
   const outerPos = op === "^^" ? "ia-ruby-under" : "ia-ruby-over";
   return (
     `<ruby class="ia-ruby ${outerPos} ia-ruby-double"${rubyPosAttr(outerPos)}>` +
-    `<ruby class="ia-ruby ${innerPos}"${rubyPosAttr(innerPos)}>${safeBase}<rp>(</rp><rt>${capped[0]}</rt><rp>)</rp></ruby>` +
-    `<rp>(</rp><rt>${capped[1]}</rt><rp>)</rp></ruby>`
+    `<ruby class="ia-ruby ${innerPos}"${rubyPosAttr(innerPos)}>${safeBase}<rp>(</rp><rt>${escapeHtml(capped[0])}</rt><rp>)</rp></ruby>` +
+    `<rp>(</rp><rt>${escapeHtml(capped[1])}</rt><rp>)</rp></ruby>`
   );
 }
 
@@ -347,12 +406,7 @@ export function hasRuby(text: string): boolean {
 
 /** True if the string contains rendered Inline Annotation HTML (ruby, bouten, or underline). */
 function hasAnnotationHtml(text: string): boolean {
-  return (
-    text.includes("<ruby") ||
-    text.includes("ia-ruby") ||
-    text.includes("ia-bouten") ||
-    text.includes("ia-underline")
-  );
+  return /<ruby\b/i.test(text) || GENERATED_ANNOTATION_HTML_RE.test(text);
 }
 
 export function hasAnyRubyContent(text: string): boolean {
@@ -364,7 +418,7 @@ const MACRO_RE = /\{\{renderer\s+:ruby,\s*([^,}]+),\s*([^,}]+)(?:,\s*([^}]+))?\}
 /**
  * Convert `^^()` / `^_()` markup to HTML (single pass).
  */
-function rubyToHTMLPass(input: string): string {
+function rubyToHTMLPass(input: string, allowRenderedBaseHtml: boolean): string {
   if (!hasRuby(input)) return input;
 
   let out = "";
@@ -393,14 +447,7 @@ function rubyToHTMLPass(input: string): string {
         baseHtml = input.slice(open + 1, opStart - 1);
       }
     } else {
-      let k = opStart - 1;
-      while (k >= 0) {
-        const ch = input[k];
-        if (/\s/.test(ch)) break;
-        if ((ch === "[" || ch === "]") && !isEscaped(input, k)) break;
-        k--;
-      }
-      baseStart = k + 1;
+      baseStart = findAbbreviatedBaseStart(input, opStart);
       baseHtml = input.slice(baseStart, opStart);
     }
 
@@ -478,15 +525,15 @@ function rubyToHTMLPass(input: string): string {
         const boutenOp = isBouten1 ? op : op2;
         const ulStyle = isUnderline1 ? ulStyle1! : ulStyle2!;
         const comboStyle = [boutenInlineStyle(boutenOp!), underlineInlineStyle(ulStyle)].join(";");
-        out += `<span class="ia-bouten ia-bouten-${boutenOp === "^^" ? "over" : "under"} ${underlineClasses(ulStyle)}" style="${comboStyle}">${unescape(baseHtml)}</span>`;
+        out += `<span class="ia-bouten ia-bouten-${boutenOp === "^^" ? "over" : "under"} ${underlineClasses(ulStyle)}" style="${comboStyle}">${escapedBaseHtml(baseHtml, allowRenderedBaseHtml)}</span>`;
       }
       // Bouten + Bouten (both dots)
       else if (isBouten1 && isBouten2) {
-        out += renderBoutenBoth(baseHtml);
+        out += renderBoutenBoth(baseHtml, allowRenderedBaseHtml);
       }
       // Underline + Underline (just one underline — prefer first)
       else {
-        out += renderUnderline(baseHtml, ulStyle1!);
+        out += renderUnderline(baseHtml, ulStyle1!, allowRenderedBaseHtml);
       }
       
       i = finalEnd;
@@ -498,9 +545,9 @@ function rubyToHTMLPass(input: string): string {
       out += input.slice(consumedFrom, baseStart);
       
       if (isBouten1) {
-        out += renderBouten(baseHtml, op);
+        out += renderBouten(baseHtml, op, allowRenderedBaseHtml);
       } else {
-        out += renderUnderline(baseHtml, ulStyle1!);
+        out += renderUnderline(baseHtml, ulStyle1!, allowRenderedBaseHtml);
       }
       
       i = annEnd + 1;
@@ -516,17 +563,17 @@ function rubyToHTMLPass(input: string): string {
         // First is special (bouten/underline), second is ruby text
         const rubyText = unescape(rawAnn2);
         if (isBouten1) {
-          out += renderRubyWithBouten(baseHtml, rubyText, op2!, op);
+          out += renderRubyWithBouten(baseHtml, rubyText, op2!, op, allowRenderedBaseHtml);
         } else {
-          out += renderRubyWithUnderline(baseHtml, rubyText, op2!, ulStyle1!);
+          out += renderRubyWithUnderline(baseHtml, rubyText, op2!, ulStyle1!, allowRenderedBaseHtml);
         }
       } else if (!isSpecial1 && isSpecial2) {
         // First is ruby text, second is special (bouten/underline)
         const rubyText = unescape(rawAnn);
         if (isBouten2) {
-          out += renderRubyWithBouten(baseHtml, rubyText, op, op2!);
+          out += renderRubyWithBouten(baseHtml, rubyText, op, op2!, allowRenderedBaseHtml);
         } else {
-          out += renderRubyWithUnderline(baseHtml, rubyText, op, ulStyle2!);
+          out += renderRubyWithUnderline(baseHtml, rubyText, op, ulStyle2!, allowRenderedBaseHtml);
         }
       }
       
@@ -559,26 +606,26 @@ function rubyToHTMLPass(input: string): string {
 
         if (isInnerSpecial && isOuterSpecial) {
           if (isInnerBouten && isOuterBouten) {
-            out += renderBoutenBoth(baseHtml);
+            out += renderBoutenBoth(baseHtml, allowRenderedBaseHtml);
           } else if ((isInnerBouten || isOuterBouten) && (isInnerUnderline || isOuterUnderline)) {
             const boutenOp = isInnerBouten ? innerOp : outerOp;
             const pipeUlStyle = isInnerUnderline ? innerUlStyle! : outerUlStyle!;
             const comboStyle2 = [boutenInlineStyle(boutenOp), underlineInlineStyle(pipeUlStyle)].join(";");
-            out += `<span class="ia-bouten ia-bouten-${boutenOp === "^^" ? "over" : "under"} ${underlineClasses(pipeUlStyle)}" style="${comboStyle2}">${unescape(baseHtml)}</span>`;
+            out += `<span class="ia-bouten ia-bouten-${boutenOp === "^^" ? "over" : "under"} ${underlineClasses(pipeUlStyle)}" style="${comboStyle2}">${escapedBaseHtml(baseHtml, allowRenderedBaseHtml)}</span>`;
           } else {
-            out += renderUnderline(baseHtml, innerUlStyle!);
+            out += renderUnderline(baseHtml, innerUlStyle!, allowRenderedBaseHtml);
           }
         } else if (isInnerSpecial) {
           if (isInnerBouten) {
-            out += renderRubyWithBouten(baseHtml, levels[1], outerOp, innerOp);
+            out += renderRubyWithBouten(baseHtml, levels[1], outerOp, innerOp, allowRenderedBaseHtml);
           } else {
-            out += renderRubyWithUnderline(baseHtml, levels[1], outerOp, innerUlStyle!);
+            out += renderRubyWithUnderline(baseHtml, levels[1], outerOp, innerUlStyle!, allowRenderedBaseHtml);
           }
         } else {
           if (isOuterBouten) {
-            out += renderRubyWithBouten(baseHtml, levels[0], innerOp, outerOp);
+            out += renderRubyWithBouten(baseHtml, levels[0], innerOp, outerOp, allowRenderedBaseHtml);
           } else {
-            out += renderRubyWithUnderline(baseHtml, levels[0], innerOp, outerUlStyle!);
+            out += renderRubyWithUnderline(baseHtml, levels[0], innerOp, outerUlStyle!, allowRenderedBaseHtml);
           }
         }
 
@@ -588,7 +635,7 @@ function rubyToHTMLPass(input: string): string {
     }
 
     out += input.slice(consumedFrom, baseStart);
-    out += renderRuby(baseHtml, op, levels);
+    out += renderRuby(baseHtml, op, levels, allowRenderedBaseHtml);
     i = finalEnd;
   }
 
@@ -603,7 +650,7 @@ export function rubyToHTML(input: string): string {
   if (!hasRuby(input)) return input;
   let result = input;
   for (let pass = 0; pass < 5; pass++) {
-    const next = rubyToHTMLPass(result);
+    const next = rubyToHTMLPass(result, pass > 0);
     if (next === result) break;
     result = next;
     if (!hasRuby(result)) break;
@@ -627,7 +674,7 @@ export function anyToMarkup(content: string): string {
     if (!b || !a) return _match;
     const p = (pos ?? "").trim().toLowerCase();
     const op = p === "under" ? "^_" : "^^";
-    return `[${b}]${op}(${a})`;
+    return formatRubyMarkupLevels(b, op, splitByUnescapedPipe(a).map(unescape));
   });
 
   // HTML → markup
@@ -692,14 +739,7 @@ function markupToMacro(input: string): string {
         baseHtml = input.slice(open + 1, opStart - 1);
       }
     } else {
-      let k = opStart - 1;
-      while (k >= 0) {
-        const ch = input[k];
-        if (/\s/.test(ch)) break;
-        if ((ch === "[" || ch === "]") && !isEscaped(input, k)) break;
-        k--;
-      }
-      baseStart = k + 1;
+      baseStart = findAbbreviatedBaseStart(input, opStart);
       baseHtml = input.slice(baseStart, opStart);
     }
 
@@ -723,13 +763,48 @@ function markupToMacro(input: string): string {
       continue;
     }
 
+    let finalEnd = annEnd + 1;
+    let rawAnn2: string | null = null;
+    let op2: RubyOp | null = null;
+    const next = annEnd + 1;
+
+    if (
+      next + 2 < input.length &&
+      input[next] === "^" &&
+      (input[next + 1] === "^" || input[next + 1] === "_") &&
+      input[next + 2] === "("
+    ) {
+      const nextOp: RubyOp = input[next + 1] === "^" ? "^^" : "^_";
+      if (nextOp !== op) {
+        const annStart2 = next + 3;
+        const annEnd2 = findCloseParen(input, annStart2);
+        if (annEnd2 >= 0) {
+          const candidate = input.slice(annStart2, annEnd2);
+          if (candidate.length > 0) {
+            rawAnn2 = candidate;
+            op2 = nextOp;
+            finalEnd = annEnd2 + 1;
+          }
+        }
+      }
+    }
+
+    if (rawAnn2 !== null && splitByUnescapedPipe(rawAnn).length > 1) {
+      rawAnn2 = null;
+      op2 = null;
+    }
+
     const base = unescape(baseHtml);
-    const ann = unescape(rawAnn);
+    const levels = splitByUnescapedPipe(rawAnn).map(unescape);
+    if (rawAnn2 && op2) {
+      levels.push(...splitByUnescapedPipe(rawAnn2).map(unescape));
+    }
+    const ann = formatMacroAnnotationLevels(levels);
     const posArg = op === "^_" ? ", under" : "";
 
     out += input.slice(consumedFrom, baseStart);
     out += `{{renderer :ruby, ${base}, ${ann}${posArg}}}`;
-    i = annEnd + 1;
+    i = finalEnd;
   }
 
   return out;
@@ -876,7 +951,7 @@ export function rubyHtmlToMarkup(html: string): string {
         } else if (isBoutenUnder) {
           decoMarkup = `^_(..)`;
         }
-        ruby.replaceWith(doc.createTextNode(`[${base}]${rubyOp}(${rubyText})${decoMarkup}`));
+        ruby.replaceWith(doc.createTextNode(`${formatRubyMarkup(base, rubyOp, rubyText)}${decoMarkup}`));
         continue;
       }
 
@@ -895,9 +970,8 @@ export function rubyHtmlToMarkup(html: string): string {
         ).filter(Boolean);
 
         const levels = [...innerRts, ...outerRts].filter(Boolean);
-        const ann = levels.join("|");
         const innerOp = innerRuby.classList.contains("ia-ruby-over") ? "^^" : "^_";
-        ruby.replaceWith(doc.createTextNode(ann ? `[${base}]${innerOp}(${ann})` : base));
+        ruby.replaceWith(doc.createTextNode(levels.length > 0 ? formatRubyMarkupLevels(base, innerOp, levels) : base));
         continue;
       }
 
@@ -913,9 +987,8 @@ export function rubyHtmlToMarkup(html: string): string {
         (rtc) => (rtc.textContent ?? "").trim()
       );
       const levels = [...rts, ...rtcs].filter(Boolean);
-      const ann = levels.join("|");
       const op = ruby.classList.contains("ia-ruby-under") ? "^_" : "^^";
-      ruby.replaceWith(doc.createTextNode(ann ? `[${base}]${op}(${ann})` : base));
+      ruby.replaceWith(doc.createTextNode(levels.length > 0 ? formatRubyMarkupLevels(base, op, levels) : base));
     }
     rubies = Array.from(root.querySelectorAll("ruby"));
   }
@@ -929,22 +1002,22 @@ export function rubyHtmlToMarkup(html: string): string {
     
     // Bouten + Underline combinations
     if (ulPattern && isOver) {
-      span.replaceWith(doc.createTextNode(`[${base}]^^(..)^_(${ulPattern})`));
+      span.replaceWith(doc.createTextNode(`${formatRubyMarkup(base, "^^", BOUTEN_PATTERN)}^_(${ulPattern})`));
     } else if (ulPattern && isUnder) {
-      span.replaceWith(doc.createTextNode(`[${base}]^_(${ulPattern})^^(..)`));
+      span.replaceWith(doc.createTextNode(`${formatRubyMarkup(base, "^_", ulPattern)}^^(..)`));
     } else if (isOver && isUnder) {
-      span.replaceWith(doc.createTextNode(`[${base}]^^(..)^_(..)`));
+      span.replaceWith(doc.createTextNode(`${formatRubyMarkup(base, "^^", BOUTEN_PATTERN)}^_(..)`));
     } else if (isUnder) {
-      span.replaceWith(doc.createTextNode(`[${base}]^_(..)`));
+      span.replaceWith(doc.createTextNode(formatRubyMarkup(base, "^_", BOUTEN_PATTERN)));
     } else {
-      span.replaceWith(doc.createTextNode(`[${base}]^^(..)`));
+      span.replaceWith(doc.createTextNode(formatRubyMarkup(base, "^^", BOUTEN_PATTERN)));
     }
   }
 
   for (const span of Array.from(root.querySelectorAll("span.ia-underline:not(.ia-bouten)"))) {
     const base = (span.textContent ?? "").trim();
     const ulPat = underlinePatternFromClasses(span) ?? ".-";
-    span.replaceWith(doc.createTextNode(`[${base}]^_(${ulPat})`));
+    span.replaceWith(doc.createTextNode(formatRubyMarkup(base, "^_", ulPat)));
   }
 
   return root.innerHTML;
@@ -957,8 +1030,6 @@ export function rubyHtmlToMarkup(html: string): string {
 const SKIP_TAGS = new Set(["CODE", "PRE", "A", "RUBY", "SCRIPT", "STYLE"]);
 
 export function replaceRubyInElement(el: HTMLElement): void {
-  if (el.querySelector("ruby.ia-ruby, span.ia-bouten")) return;
-
   let anyReplaced = false;
   const walk = (node: Node) => {
     if (node.nodeType === Node.ELEMENT_NODE) {

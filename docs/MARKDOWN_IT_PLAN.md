@@ -1,136 +1,399 @@
-# Inline Annotation Roadmap
+# Inline Annotation Architecture Roadmap
 
 ## Goal
 
-Build **Inline Annotation** as a portable Markdown extension, not only a Logseq plugin.
+Build **Inline Annotation** as a portable Markdown extension for ruby, furigana,
+bouten, underline, and two-slot text annotations.
 
-Spec title:
+The project should be portable without pretending every Markdown host behaves the
+same. The durable center is the syntax, semantic model, fixtures, and HTML class
+contract. Each host adapter is allowed to handle its own parser timing,
+selection APIs, escaping quirks, and editor workflow.
 
-> Markdown Inline Annotation Extension: A syntax specification for ruby, text emphasis, and complex text decorations.
+Current status:
 
-The Logseq plugin is the reference implementation for the current feature set. The next implementation order is:
+- `markdown-it-inline-annotation` `0.1.0` has shipped on npm.
+- The markdown-it package currently hosts the canonical `SPEC.md`, parser,
+  markdown-it adapter, stylesheet, examples, and compatibility tests.
+- Logseq `0.5.0` emits the same canonical `ia-*` HTML class contract.
 
-1. `markdown-it-inline-annotation`
-2. Logseq polish
-3. Obsidian plugin
-4. remark/unified support
+## Architecture Principles
 
-Remark/unified is intentionally later because it is not an immediate use case, but the spec and tests should avoid choices that would make a future micromark/remark adapter awkward.
+1. Spec first, shared runtime later.
+   Shared fixtures and a clear spec are more valuable than premature code reuse.
+   A shared package should only be extracted after at least two non-identical
+   adapters prove the boundary.
 
-## Phase 1: markdown-it + Core
+2. Keep the core narrow.
+   The reusable core may parse source text, produce source ranges, expose a
+   neutral annotation model, escape user text, and render canonical HTML. It must
+   not contain Logseq, Obsidian, markdown-it, or remark workarounds.
 
-Replace the early `markdown-it-ruby-syntax` implementation with a new package named `markdown-it-inline-annotation`.
+3. Host adapters own host behavior.
+   Logseq parser conflicts, Obsidian reading-view timing, markdown-it tokenizer
+   rules, and future micromark state machines belong outside the core.
 
-Package shape:
+4. Document unavoidable conflicts instead of hiding them.
+   Some host parsers run before plugins. In those cases the right product
+   decision is a reliable workflow, not a fragile illusion of full Markdown
+   control.
+
+5. The public contract is source syntax plus semantic HTML.
+   The canonical output classes are `ia-*`. Raw HTML strings may differ by
+   adapter, but slot meaning, escaping, and class semantics should not.
+
+## Layer Boundaries
+
+### Spec
+
+Defines:
+
+- source syntax: `[base]^^(annotation)`, `[base]^_(annotation)`, abbreviated
+  forms, pipe notation, mixed chaining
+- two-slot model: over and under
+- rendering modifiers: bouten `..`, underline `.-`, `.~`, `.=`
+- escaping rules
+- source range expectations
+- safety model
+- canonical `ia-*` class contract
+
+Does not define:
+
+- how a host editor intercepts Markdown
+- selection or conversion commands
+- DOM mutation timing
+- exact whitespace produced by every renderer
+
+### Core
+
+Allowed responsibilities:
+
+- parse Inline Annotation source into a neutral model
+- preserve source ranges
+- escape base and annotation text by default
+- render portable HTML for class-mode and inline-style mode
+- expose reusable fixtures for adapters
+
+Disallowed responsibilities:
+
+- Logseq macro syntax
+- Logseq highlight or italic conflict workarounds
+- Obsidian Live Preview behavior
+- markdown-it inline rule ordering
+- remark or micromark tokenizer state
+- UI commands
+
+### Adapters
+
+Adapters translate host capabilities into the spec model:
+
+- markdown-it: real inline tokenizer before `text`
+- Logseq: DOM rendering plus slash-command conversion workflows
+- Obsidian: reading-view postprocessor first, editor support later
+- remark/unified: micromark/mdast integration only when there is a concrete
+  consuming pipeline
+
+## Host Compatibility Policy
+
+Compatibility means "the best reliable behavior in that host", not "all hosts
+must accept every source string in the same editing context".
+
+Logseq is the clearest example. Logseq parses its own Markdown before plugins
+run, so multiple inline `^^()` / `^_()` forms in one block can conflict with
+Logseq highlight or italic syntax before this plugin sees the original source.
+The core cannot fix that. The Logseq adapter should instead provide:
+
+- clear documentation
+- selected-block conversion commands
+- macro output for editable Logseq-native content
+- HTML output for fixed visual content
+- tests that preserve code spans and known conversion edge cases
+
+This policy should also apply to future hosts. If a host has a parser conflict,
+the adapter documents it and offers the least surprising workaround.
+
+## Testing Strategy
+
+Use three fixture layers:
+
+1. Spec fixtures
+   Shared by all implementations. Cover basic over/under ruby, abbreviated
+   syntax, pipes, chaining, per-character alignment, auto-hide, nesting,
+   decorations, escaping, multiple annotations, and XSS escaping.
+   The canonical corpus now lives in
+   `markdown-it-inline-annotation/fixtures/html-render.json`; Logseq keeps a
+   copy at `src/shared-html-render-fixtures.json` with a thin TypeScript wrapper
+   in `src/spec-fixtures.ts`. These cases must stay host-neutral and avoid exact
+   HTML serialization when class semantics are enough.
+
+   The copy is a transition mechanism, not the final architecture. Keep it
+   checked in while Logseq and markdown-it are separate packages. After a second
+   non-Logseq adapter exists, prefer importing fixtures from
+   `markdown-it-inline-annotation/fixtures/html-render.json`, or move the spec
+   and fixtures into a neutral package or monorepo if adapter work justifies
+   that structure.
+
+2. Adapter fixtures
+   Verify integration behavior such as markdown-it inline parsing, Obsidian
+   reading-view DOM replacement, or remark AST output.
+
+3. Host workflow fixtures
+   Capture host-specific behavior such as Logseq macro conversion, selected
+   blocks, code protection, and known parser conflicts.
+   These remain in `src/parser.test.ts` because they exercise Logseq-specific
+   conversion and DOM behavior, not the portable grammar.
+
+Use Computer Use or app-level manual smoke tests only for release checks:
+
+- plugin loads
+- commands appear
+- selected block conversion works
+- rendered output appears after reload
+- no obvious editor breakage
+
+Do not rely on desktop UI automation as the main correctness test suite. It is
+too slow and too environment-dependent.
+
+## Spec Ownership
+
+Short term:
+
+- `markdown-it-inline-annotation/SPEC.md` is the canonical spec home.
+- Logseq, demos, and future plugins link to that file.
+
+Why:
+
+- the package is already published
+- the repo is more neutral than the Logseq plugin
+- the current parser and examples live there
+
+Long term:
+
+- move the spec to a neutral `inline-annotation` repo or org when a second
+  non-Logseq adapter ships
+- possible future monorepo shape:
 
 ```text
-src/
-  core.ts       # parser, source-range model, safe HTML renderer
-  index.ts      # markdown-it adapter
-test.js         # conformance + markdown-it integration tests
-SPEC.md         # normative behavior
-README.md       # user docs
+spec/
+packages/core/
+packages/markdown-it/
+packages/remark/
+plugins/obsidian/
+plugins/logseq/
+apps/demo/
 ```
 
-Core syntax:
+Do not move the spec yet. Moving before the adapter boundary is proven would add
+process without reducing risk.
 
-- `[base]^^(annotation)` and `[base]^_(annotation)`
-- `base^^(annotation)` and `base^_(annotation)` abbreviated form
-- `[base]^^(over|under)` as compact two-slot notation
-- `[base]^^(over)^_(under)` and reverse mixed chaining
-- per-character alignment when space-separated annotation counts match base characters
-- auto-hide matching base/annotation characters
-- nested bracket spans such as `[[護]^^(まも)れ]^_(プロテゴ)`
-- bouten modifier `..`
-- underline modifiers `.-`, `.~`, `.=`
+## Phase 1: markdown-it Package
 
-Core design:
+Status: **complete for v0.1.0**.
 
-- `^^` and `^_` are position-assignment operators for over/under slots.
-- Normal slot text renders as ruby.
-- Special slot values render as decoration modifiers.
-- v1 capacity is two slots. Additional pipe levels are ignored for compatibility with the Logseq implementation.
-- Output must escape user text before producing HTML.
-- The parser must preserve source ranges so other adapters can later map source text to AST nodes.
+Acceptance:
 
-markdown-it design:
+- [x] `npm test` passes for core and markdown-it integration cases
+- [x] `npm run build` exits successfully
+- [x] escaped pipe handling works
+- [x] multiple annotations in one paragraph work without Logseq workarounds
+- [x] canonical stylesheet is published
+- [x] generated example page exists
 
-- Register an inline rule before `text`, so abbreviated forms and multiple annotations in one paragraph can be found before markdown-it collapses them into text tokens.
-- Do not override `renderer.rules.text`.
-- Stop scanning before Markdown constructs such as code spans, links, emphasis, raw HTML, and entities so markdown-it can parse them normally.
-- Emit portable HTML from core in v1; a semantic token renderer can be added after the grammar stabilizes.
+Published package:
 
-## Phase 2: Logseq Polish
+- npm package: `markdown-it-inline-annotation`
+- current dist tag: `latest` -> `0.1.0`
+- published: 2026-05-29T18:40:03Z
 
-Keep the existing Logseq plugin behavior stable, then improve it using the lessons from the markdown-it port.
+Maintenance:
+
+- keep `SPEC.md`, README examples, and generated examples aligned
+- add new parser fixtures here first when the behavior is host-neutral
+- avoid syntax expansion until Obsidian reading-view behavior has been tested
+
+## Phase 2: Logseq Stabilization
+
+Status: **in progress**.
+
+Purpose:
+
+Make Logseq reliable and understandable instead of forcing it to behave like a
+normal Markdown postprocessor.
 
 Priorities:
 
-- Document Logseq's host limitation clearly: multiple inline `^^()` / `^_()` in one bullet can be parsed as Logseq highlight/italic before the plugin runs.
-- Keep macro and HTML conversion as the recommended workaround.
-- Optionally add a setting or command that converts selected inline markup to macro/HTML before Logseq's parser can conflict.
-- Consider adopting the shared core after markdown-it has proven the parser and tests.
+- keep current rendering stable
+- document Logseq host-parser limitations plainly
+- make `/Ruby → markup`, `/Ruby → macro`, and `/Ruby → HTML (one-way)`
+  reliable on selected blocks and current block
+- use macro conversion as the recommended workaround for editable multi-ruby
+  Logseq content
+- use HTML conversion as the recommended workaround for fixed visual output
+- keep expanding host workflow fixtures for conversion, code protection, and
+  mixed rendered/raw blocks
 
-Do not try to make the Logseq host behave like a real Markdown postprocessor unless Logseq exposes a suitable API.
+Initial fixtures now cover:
 
-## Phase 3: Obsidian
+- multiple annotations converted to macros in one block
+- mixed macro and markup converted to HTML while preserving inline code
+- fenced code block protection
+- raw markup rendered beside existing rendered ruby in the same block
+- shared escape behavior for pipes, right parens, brackets, and HTML text
+- safer conversion back to markup/macro, including delimiter escaping and mixed
+  ruby chains converted to macro pipe levels
 
-Build an Obsidian plugin after markdown-it is stable.
+Non-goals:
+
+- do not chase full parity with markdown-it inside Logseq block rendering
+- do not move Logseq host quirks into the shared parser
+- do not extract `@inline-annotation/core` just to reduce duplication
+
+Decision:
+
+Keep Logseq code independent for now. Share behavior through spec and fixtures.
+Consider adopting a shared core only after Obsidian proves the boundary.
+
+## Phase 2.5: Online Demo
+
+Status: **started in markdown-it package**.
+
+Build a small online renderer for the website using the published
+`markdown-it-inline-annotation` package.
+
+Features:
+
+- source textarea
+- rendered preview
+- HTML output
+- examples menu
+- class-mode toggle
+- examples loaded from the shared fixture corpus
+- no dependency on Logseq behavior
+
+Why this comes before remark:
+
+- it makes the spec visible
+- it helps users understand the syntax quickly
+- it gives the project a public compatibility target
+- it makes the fixture corpus visible as product behavior, not just test data
+
+Scope:
+
+- keep the first version deliberately plain
+- use the core renderer directly
+- load examples from the shared fixture corpus where possible
+- avoid site-specific layout work until it is integrated into the real website
+
+## Phase 3: Obsidian Adapter
+
+Status: **planned after Logseq stabilization and demo**.
 
 First version:
 
-- reading-view postprocessor using the shared core
-- CSS for ruby, bouten, and underline modifiers
-- no Live Preview guarantee in v1
+- reading-view postprocessor
+- canonical `ia-*` CSS
+- use the markdown-it/core parser if it remains clean enough
+- no Live Preview guarantee
+- optional command to convert selected source to HTML if Obsidian parser
+  conflicts appear in real use
 
 Later:
 
-- Live Preview/editor support if Obsidian APIs make it reliable
-- optional conversion commands similar to Logseq
+- Live Preview support through CodeMirror decorations if the API path is clean
+- editor commands only after reading-view behavior is stable
+- app-level smoke tests with Computer Use or manual checklist before release
 
-## Phase 4: remark/unified
+Non-goal for v1:
 
-Support the unified ecosystem when there is a concrete use case.
+- do not promise editor-mode parity with reading view
 
-Target package family:
+## Phase 4: Shared Core Package
+
+Status: **defer**.
+
+Extract `@inline-annotation/core` only when all are true:
+
+- markdown-it and Obsidian both use the same semantic parser successfully
+- Logseq can either adopt it cleanly or remain a documented host adapter
+- fixtures are split into spec, adapter, and host workflow layers
+- the public API is stable enough to support future remark work
+
+Potential API shape:
+
+```ts
+parseInlineAnnotation(input, options) -> AnnotationMatch[]
+renderAnnotationHtml(model, options) -> string
+renderInlineAnnotationsToHtml(input, options) -> string
+```
+
+The API must expose source ranges and avoid host assumptions.
+
+## Phase 5: remark/unified
+
+Status: **defer until there is a concrete consuming pipeline**.
+
+Future package family:
 
 - `micromark-extension-inline-annotation`
 - `mdast-util-inline-annotation`
 - `remark-inline-annotation`
 
-Compatibility constraints to keep in mind now:
+How this differs from current routes:
 
-- syntax must be expressible as a real inline tokenizer, not a post-render replacement
-- source ranges should remain available
-- HTML rendering should be separate from parse semantics
-- fixtures should be reusable across markdown-it and future remark tests
+- markdown-it works at inline-tokenizer/render time and can emit HTML directly.
+- Logseq works as a host adapter with DOM rendering and slash-command
+  conversion because Logseq parses Markdown before plugins run.
+- remark/unified needs a tokenizer plus AST utilities: micromark recognizes the
+  source ranges, mdast stores semantic nodes, and remark/rehype render those
+  nodes later.
 
-## Test Strategy
+Prepare now by:
 
-Maintain shared fixtures that cover:
+- keeping source ranges available
+- separating parse semantics from HTML rendering
+- avoiding syntax that cannot be expressed as a real inline tokenizer
+- making fixtures independent of markdown-it-specific output formatting
 
-- basic over/under ruby
-- abbreviated syntax
-- pipe two-slot notation
-- mixed chaining and same-operator non-chaining
-- per-character alignment and auto-hide
-- nested bracket spans
-- bouten and underline modifiers
-- escaped `|`, `)`, `]`, and backslash
-- multiple annotations in one paragraph
-- code span, link, emphasis, HTML, and entity interactions
-- XSS escaping in base and annotation text
+Do not build this before the demo and Obsidian reading-view adapter unless a real
+site or MDX workflow needs it.
 
-Acceptance for phase 1:
+## Tooling Policy
 
-- `npm test` passes for core and markdown-it integration cases
-- `npm run build` exits successfully
-- old escaped-pipe failure is fixed
-- markdown-it can render two or more annotations in one paragraph without relying on Logseq workarounds
+Current decision:
+
+- keep strict TypeScript builds as the primary static check
+- keep shared fixture corpus validation in tests
+- do not add ESLint yet
+
+Why:
+
+- both repos are small and already compile under `strict`
+- adding ESLint now would introduce config and dependency churn without catching
+  the parser/adapter risks that matter most
+- lint becomes more valuable when the project moves to a monorepo or adds a
+  second TypeScript adapter with shared source files
+
+Revisit lint when:
+
+- shared runtime code is extracted
+- Obsidian or demo code adds more frontend surface
+- CI needs consistent style checks across multiple packages
+
+## Safety Model
+
+Default behavior:
+
+- base and annotation text are plain text in v1
+- renderers must escape user-controlled text
+- annotation content does not parse arbitrary Markdown
+- raw HTML handling is adapter-specific
+
+Future AST adapters may support richer base content, but that must be explicit
+and separately tested.
 
 ## Naming
 
 - Brand: **Inline Annotation**
-- markdown-it package: `markdown-it-inline-annotation`
-- future shared package name: `@inline-annotation/core`
-- canonical spelling in code/docs: `bouten`
+- Current package: `markdown-it-inline-annotation`
+- Future shared package, if justified: `@inline-annotation/core`
+- Canonical spelling: `bouten`
