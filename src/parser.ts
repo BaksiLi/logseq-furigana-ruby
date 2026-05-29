@@ -36,14 +36,14 @@ function getUnderlineStyle(pattern: string): UnderlineStyle | null {
 }
 
 function underlineClasses(style: UnderlineStyle): string {
-  if (style === "solid") return "ls-ruby-underline";
-  return `ls-ruby-underline ls-ruby-underline-${style}`;
+  if (style === "solid") return "ia-underline";
+  return `ia-underline ia-underline-${style}`;
 }
 
 function underlinePatternFromClasses(el: Element): string | null {
-  if (el.classList.contains("ls-ruby-underline-wavy")) return ".~";
-  if (el.classList.contains("ls-ruby-underline-double")) return ".=";
-  if (el.classList.contains("ls-ruby-underline")) return ".-";
+  if (el.classList.contains("ia-underline-wavy")) return ".~";
+  if (el.classList.contains("ia-underline-double")) return ".=";
+  if (el.classList.contains("ia-underline")) return ".-";
   return null;
 }
 
@@ -119,12 +119,12 @@ function boutenInlineStyle(op: RubyOp): string {
 
 /** Return ` style="..."` attr for under-positioned ruby, empty for over */
 function rubyPosAttr(pos: string): string {
-  return pos === "ls-ruby-under" ? ` style="${STYLE_RUBY_UNDER}"` : "";
+  return pos === "ia-ruby-under" ? ` style="${STYLE_RUBY_UNDER}"` : "";
 }
 
 /** Wrap a character in an empty-annotation ruby to preserve vertical spacing */
 function emptyRuby(char: string, pos: string): string {
-  return `<ruby class="ls-ruby ${pos}"${rubyPosAttr(pos)}>${char}<rp>(</rp><rt></rt><rp>)</rp></ruby>`;
+  return `<ruby class="ia-ruby ${pos}"${rubyPosAttr(pos)}>${char}<rp>(</rp><rt></rt><rp>)</rp></ruby>`;
 }
 
 // ---------------------------------------------------------------------------
@@ -139,13 +139,13 @@ function emptyRuby(char: string, pos: string): string {
  *   is semantically close and renders stably.
  */
 function renderBouten(base: string, op: RubyOp): string {
-  const pos = op === "^^" ? "ls-ruby-bouten-over" : "ls-ruby-bouten-under";
-  return `<span class="ls-ruby-bouten ${pos}" style="${boutenInlineStyle(op)}">${unescape(base)}</span>`;
+  const pos = op === "^^" ? "ia-bouten-over" : "ia-bouten-under";
+  return `<span class="ia-bouten ${pos}" style="${boutenInlineStyle(op)}">${unescape(base)}</span>`;
 }
 
 function renderBoutenBoth(base: string): string {
   // Over = text-emphasis, Under = dotted underline, on the same element
-  return `<span class="ls-ruby-bouten ls-ruby-bouten-over ls-ruby-bouten-under" style="${STYLE_BOUTEN_OVER};${STYLE_BOUTEN_UNDER}">${unescape(base)}</span>`;
+  return `<span class="ia-bouten ia-bouten-over ia-bouten-under" style="${STYLE_BOUTEN_OVER};${STYLE_BOUTEN_UNDER}">${unescape(base)}</span>`;
 }
 
 function renderUnderline(base: string, style: UnderlineStyle = "solid"): string {
@@ -157,17 +157,17 @@ function renderUnderline(base: string, style: UnderlineStyle = "solid"): string 
  */
 function renderRubyWithBouten(base: string, rubyText: string, rubyOp: RubyOp, boutenOp: RubyOp): string {
   const safeBase = unescape(base);
-  const rubyPos = rubyOp === "^^" ? "ls-ruby-over" : "ls-ruby-under";
+  const rubyPos = rubyOp === "^^" ? "ia-ruby-over" : "ia-ruby-under";
   const boutenPos = boutenOp === "^^" ? "over" : "under";
-  const styles = [rubyPos === "ls-ruby-under" ? STYLE_RUBY_UNDER : "", boutenInlineStyle(boutenOp)].filter(Boolean).join(";");
-  return `<ruby class="ls-ruby ls-ruby-mixed ${rubyPos} ls-ruby-bouten-${boutenPos}" style="${styles}">${safeBase}<rp>(</rp><rt>${rubyText}</rt><rp>)</rp></ruby>`;
+  const styles = [rubyPos === "ia-ruby-under" ? STYLE_RUBY_UNDER : "", boutenInlineStyle(boutenOp)].filter(Boolean).join(";");
+  return `<ruby class="ia-ruby ia-ruby-mixed ${rubyPos} ia-bouten-${boutenPos}" style="${styles}">${safeBase}<rp>(</rp><rt>${rubyText}</rt><rp>)</rp></ruby>`;
 }
 
 function renderRubyWithUnderline(base: string, rubyText: string, rubyOp: RubyOp, style: UnderlineStyle = "solid"): string {
   const safeBase = unescape(base);
-  const rubyPos = rubyOp === "^^" ? "ls-ruby-over" : "ls-ruby-under";
-  const styles = [rubyPos === "ls-ruby-under" ? STYLE_RUBY_UNDER : "", underlineInlineStyle(style)].filter(Boolean).join(";");
-  return `<ruby class="ls-ruby ls-ruby-mixed ${rubyPos} ${underlineClasses(style)}" style="${styles}">${safeBase}<rp>(</rp><rt>${rubyText}</rt><rp>)</rp></ruby>`;
+  const rubyPos = rubyOp === "^^" ? "ia-ruby-over" : "ia-ruby-under";
+  const styles = [rubyPos === "ia-ruby-under" ? STYLE_RUBY_UNDER : "", underlineInlineStyle(style)].filter(Boolean).join(";");
+  return `<ruby class="ia-ruby ia-ruby-mixed ${rubyPos} ${underlineClasses(style)}" style="${styles}">${safeBase}<rp>(</rp><rt>${rubyText}</rt><rp>)</rp></ruby>`;
 }
 
 /**
@@ -202,8 +202,8 @@ function renderRuby(base: string, op: RubyOp, levels: string[]): string {
     const ann2Parts = capped[1].includes(" ") ? splitBySpaces(capped[1]) : null;
     const can1Align = ann1Parts !== null && ann1Parts.length === baseChars.length;
     const can2Align = ann2Parts !== null && ann2Parts.length === baseChars.length;
-    const innerPos = op === "^^" ? "ls-ruby-over" : "ls-ruby-under";
-    const outerPos = op === "^^" ? "ls-ruby-under" : "ls-ruby-over";
+    const innerPos = op === "^^" ? "ia-ruby-over" : "ia-ruby-under";
+    const outerPos = op === "^^" ? "ia-ruby-under" : "ia-ruby-over";
 
     if (can1Align && can2Align) {
       // Both levels per-character aligned
@@ -217,11 +217,11 @@ function renderRuby(base: string, op: RubyOp, levels: string[]): string {
         if (hide1 && hide2) {
           result += emptyRuby(char, innerPos);
         } else if (hide1) {
-          result += `<ruby class="ls-ruby ${outerPos}"${rubyPosAttr(outerPos)}>${char}<rp>(</rp><rt>${a2}</rt><rp>)</rp></ruby>`;
+          result += `<ruby class="ia-ruby ${outerPos}"${rubyPosAttr(outerPos)}>${char}<rp>(</rp><rt>${a2}</rt><rp>)</rp></ruby>`;
         } else if (hide2) {
-          result += `<ruby class="ls-ruby ${innerPos}"${rubyPosAttr(innerPos)}>${char}<rp>(</rp><rt>${a1}</rt><rp>)</rp></ruby>`;
+          result += `<ruby class="ia-ruby ${innerPos}"${rubyPosAttr(innerPos)}>${char}<rp>(</rp><rt>${a1}</rt><rp>)</rp></ruby>`;
         } else {
-          result += `<ruby class="ls-ruby ${outerPos} ls-ruby-double"${rubyPosAttr(outerPos)}><ruby class="ls-ruby ${innerPos}"${rubyPosAttr(innerPos)}>${char}<rp>(</rp><rt>${a1}</rt><rp>)</rp></ruby><rp>(</rp><rt>${a2}</rt><rp>)</rp></ruby>`;
+          result += `<ruby class="ia-ruby ${outerPos} ia-ruby-double"${rubyPosAttr(outerPos)}><ruby class="ia-ruby ${innerPos}"${rubyPosAttr(innerPos)}>${char}<rp>(</rp><rt>${a1}</rt><rp>)</rp></ruby><rp>(</rp><rt>${a2}</rt><rp>)</rp></ruby>`;
         }
       }
       return result;
@@ -236,11 +236,11 @@ function renderRuby(base: string, op: RubyOp, levels: string[]): string {
         if (shouldHideAnnotation(char, ann)) {
           innerRubies += emptyRuby(char, innerPos);
         } else {
-          innerRubies += `<ruby class="ls-ruby ${innerPos}"${rubyPosAttr(innerPos)}>${char}<rp>(</rp><rt>${ann}</rt><rp>)</rp></ruby>`;
+          innerRubies += `<ruby class="ia-ruby ${innerPos}"${rubyPosAttr(innerPos)}>${char}<rp>(</rp><rt>${ann}</rt><rp>)</rp></ruby>`;
         }
       }
       return (
-        `<ruby class="ls-ruby ${outerPos} ls-ruby-double"${rubyPosAttr(outerPos)}>` +
+        `<ruby class="ia-ruby ${outerPos} ia-ruby-double"${rubyPosAttr(outerPos)}>` +
         innerRubies +
         `<rp>(</rp><rt>${capped[1]}</rt><rp>)</rp></ruby>`
       );
@@ -255,11 +255,11 @@ function renderRuby(base: string, op: RubyOp, levels: string[]): string {
         if (shouldHideAnnotation(char, ann)) {
           innerRubies += emptyRuby(char, outerPos);
         } else {
-          innerRubies += `<ruby class="ls-ruby ${outerPos}"${rubyPosAttr(outerPos)}>${char}<rp>(</rp><rt>${ann}</rt><rp>)</rp></ruby>`;
+          innerRubies += `<ruby class="ia-ruby ${outerPos}"${rubyPosAttr(outerPos)}>${char}<rp>(</rp><rt>${ann}</rt><rp>)</rp></ruby>`;
         }
       }
       return (
-        `<ruby class="ls-ruby ${innerPos} ls-ruby-double"${rubyPosAttr(innerPos)}>` +
+        `<ruby class="ia-ruby ${innerPos} ia-ruby-double"${rubyPosAttr(innerPos)}>` +
         innerRubies +
         `<rp>(</rp><rt>${capped[0]}</rt><rp>)</rp></ruby>`
       );
@@ -267,8 +267,8 @@ function renderRuby(base: string, op: RubyOp, levels: string[]): string {
 
     // Neither can align: standard double-level group ruby
     return (
-      `<ruby class="ls-ruby ${outerPos} ls-ruby-double"${rubyPosAttr(outerPos)}>` +
-      `<ruby class="ls-ruby ${innerPos}"${rubyPosAttr(innerPos)}>${safeBase}<rp>(</rp><rt>${capped[0]}</rt><rp>)</rp></ruby>` +
+      `<ruby class="ia-ruby ${outerPos} ia-ruby-double"${rubyPosAttr(outerPos)}>` +
+      `<ruby class="ia-ruby ${innerPos}"${rubyPosAttr(innerPos)}>${safeBase}<rp>(</rp><rt>${capped[0]}</rt><rp>)</rp></ruby>` +
       `<rp>(</rp><rt>${capped[1]}</rt><rp>)</rp></ruby>`
     );
   }
@@ -278,14 +278,14 @@ function renderRuby(base: string, op: RubyOp, levels: string[]): string {
     const annParts = splitBySpaces(capped[0]);
     if (annParts.length === baseChars.length) {
       let result = "";
-      const pos = op === "^^" ? "ls-ruby-over" : "ls-ruby-under";
+      const pos = op === "^^" ? "ia-ruby-over" : "ia-ruby-under";
       for (let i = 0; i < baseChars.length; i++) {
         const char = baseChars[i];
         const ann = annParts[i];
         if (shouldHideAnnotation(char, ann)) {
           result += emptyRuby(char, pos);
         } else {
-          result += `<ruby class="ls-ruby ${pos}"${rubyPosAttr(pos)}>${char}<rp>(</rp><rt>${ann}</rt><rp>)</rp></ruby>`;
+          result += `<ruby class="ia-ruby ${pos}"${rubyPosAttr(pos)}>${char}<rp>(</rp><rt>${ann}</rt><rp>)</rp></ruby>`;
         }
       }
       return result;
@@ -294,16 +294,16 @@ function renderRuby(base: string, op: RubyOp, levels: string[]): string {
 
   // --- Fallback: standard group ruby ---
   if (capped.length === 1) {
-    const pos = op === "^^" ? "ls-ruby-over" : "ls-ruby-under";
-    return `<ruby class="ls-ruby ${pos}"${rubyPosAttr(pos)}>${safeBase}<rp>(</rp><rt>${capped[0]}</rt><rp>)</rp></ruby>`;
+    const pos = op === "^^" ? "ia-ruby-over" : "ia-ruby-under";
+    return `<ruby class="ia-ruby ${pos}"${rubyPosAttr(pos)}>${safeBase}<rp>(</rp><rt>${capped[0]}</rt><rp>)</rp></ruby>`;
   }
 
   // Two levels group: nested <ruby> (Chromium doesn't support <rtc>)
-  const innerPos = op === "^^" ? "ls-ruby-over" : "ls-ruby-under";
-  const outerPos = op === "^^" ? "ls-ruby-under" : "ls-ruby-over";
+  const innerPos = op === "^^" ? "ia-ruby-over" : "ia-ruby-under";
+  const outerPos = op === "^^" ? "ia-ruby-under" : "ia-ruby-over";
   return (
-    `<ruby class="ls-ruby ${outerPos} ls-ruby-double"${rubyPosAttr(outerPos)}>` +
-    `<ruby class="ls-ruby ${innerPos}"${rubyPosAttr(innerPos)}>${safeBase}<rp>(</rp><rt>${capped[0]}</rt><rp>)</rp></ruby>` +
+    `<ruby class="ia-ruby ${outerPos} ia-ruby-double"${rubyPosAttr(outerPos)}>` +
+    `<ruby class="ia-ruby ${innerPos}"${rubyPosAttr(innerPos)}>${safeBase}<rp>(</rp><rt>${capped[0]}</rt><rp>)</rp></ruby>` +
     `<rp>(</rp><rt>${capped[1]}</rt><rp>)</rp></ruby>`
   );
 }
@@ -345,8 +345,18 @@ export function hasRuby(text: string): boolean {
   return text.includes("^^(") || text.includes("^_(");
 }
 
+/** True if the string contains rendered Inline Annotation HTML (ruby, bouten, or underline). */
+function hasAnnotationHtml(text: string): boolean {
+  return (
+    text.includes("<ruby") ||
+    text.includes("ia-ruby") ||
+    text.includes("ia-bouten") ||
+    text.includes("ia-underline")
+  );
+}
+
 export function hasAnyRubyContent(text: string): boolean {
-  return hasRuby(text) || text.includes("<ruby") || text.includes("ls-ruby") || text.includes("{{renderer :ruby");
+  return hasRuby(text) || hasAnnotationHtml(text) || text.includes("{{renderer :ruby");
 }
 
 const MACRO_RE = /\{\{renderer\s+:ruby,\s*([^,}]+),\s*([^,}]+)(?:,\s*([^}]+))?\}\}/g;
@@ -468,7 +478,7 @@ function rubyToHTMLPass(input: string): string {
         const boutenOp = isBouten1 ? op : op2;
         const ulStyle = isUnderline1 ? ulStyle1! : ulStyle2!;
         const comboStyle = [boutenInlineStyle(boutenOp!), underlineInlineStyle(ulStyle)].join(";");
-        out += `<span class="ls-ruby-bouten ls-ruby-bouten-${boutenOp === "^^" ? "over" : "under"} ${underlineClasses(ulStyle)}" style="${comboStyle}">${unescape(baseHtml)}</span>`;
+        out += `<span class="ia-bouten ia-bouten-${boutenOp === "^^" ? "over" : "under"} ${underlineClasses(ulStyle)}" style="${comboStyle}">${unescape(baseHtml)}</span>`;
       }
       // Bouten + Bouten (both dots)
       else if (isBouten1 && isBouten2) {
@@ -554,7 +564,7 @@ function rubyToHTMLPass(input: string): string {
             const boutenOp = isInnerBouten ? innerOp : outerOp;
             const pipeUlStyle = isInnerUnderline ? innerUlStyle! : outerUlStyle!;
             const comboStyle2 = [boutenInlineStyle(boutenOp), underlineInlineStyle(pipeUlStyle)].join(";");
-            out += `<span class="ls-ruby-bouten ls-ruby-bouten-${boutenOp === "^^" ? "over" : "under"} ${underlineClasses(pipeUlStyle)}" style="${comboStyle2}">${unescape(baseHtml)}</span>`;
+            out += `<span class="ia-bouten ia-bouten-${boutenOp === "^^" ? "over" : "under"} ${underlineClasses(pipeUlStyle)}" style="${comboStyle2}">${unescape(baseHtml)}</span>`;
           } else {
             out += renderUnderline(baseHtml, innerUlStyle!);
           }
@@ -621,7 +631,7 @@ export function anyToMarkup(content: string): string {
   });
 
   // HTML → markup
-  if (result.includes("<ruby") || result.includes("ls-ruby")) {
+  if (hasAnnotationHtml(result)) {
     result = rubyHtmlToMarkup(result);
   }
 
@@ -642,7 +652,7 @@ export function anyToMacro(content: string): string {
   }
 
   // HTML → macro
-  if (result.includes("<ruby") || result.includes("ls-ruby")) {
+  if (hasAnnotationHtml(result)) {
     const doc = new DOMParser().parseFromString(`<div>${result}</div>`, "text/html");
     const root = doc.body.firstElementChild as HTMLElement | null;
     if (root) {
@@ -732,14 +742,14 @@ function htmlElementsToMacro(root: HTMLElement): void {
       if (!ruby.parentNode) continue;
 
       // Mixed ruby — macro only preserves ruby text (decoration lost)
-      if (ruby.classList.contains("ls-ruby-mixed")) {
+      if (ruby.classList.contains("ia-ruby-mixed")) {
         const baseClone = ruby.cloneNode(true) as HTMLElement;
         baseClone.querySelectorAll("rt, rp").forEach((n) => n.remove());
         const base = (baseClone.textContent ?? "").trim();
         const rt = firstDirectChildByTag(ruby, "rt");
         const rubyText = rt ? (rt.textContent ?? "").trim() : "";
         if (!base || !rubyText) continue;
-        const posArg = ruby.classList.contains("ls-ruby-under") ? ", under" : "";
+        const posArg = ruby.classList.contains("ia-ruby-under") ? ", under" : "";
         ruby.replaceWith(root.ownerDocument.createTextNode(`{{renderer :ruby, ${base}, ${rubyText}${posArg}}}`));
         continue;
       }
@@ -757,7 +767,7 @@ function htmlElementsToMacro(root: HTMLElement): void {
         ).filter(Boolean);
         const levels = [...innerRts, ...outerRts].filter(Boolean);
         const ann = levels.join("|");
-        const posArg = innerRuby.classList.contains("ls-ruby-under") ? ", under" : "";
+        const posArg = innerRuby.classList.contains("ia-ruby-under") ? ", under" : "";
         if (ann) ruby.replaceWith(root.ownerDocument.createTextNode(`{{renderer :ruby, ${base}, ${ann}${posArg}}}`));
         continue;
       }
@@ -773,17 +783,17 @@ function htmlElementsToMacro(root: HTMLElement): void {
       );
       const levels = [...rts, ...rtcs].filter(Boolean);
       const ann = levels.join("|");
-      const posArg = ruby.classList.contains("ls-ruby-under") ? ", under" : "";
+      const posArg = ruby.classList.contains("ia-ruby-under") ? ", under" : "";
       if (ann) ruby.replaceWith(root.ownerDocument.createTextNode(`{{renderer :ruby, ${base}, ${ann}${posArg}}}`));
     }
     rubies = Array.from(root.querySelectorAll("ruby"));
   }
 
-  for (const span of Array.from(root.querySelectorAll("span.ls-ruby-bouten"))) {
+  for (const span of Array.from(root.querySelectorAll("span.ia-bouten"))) {
     const base = (span.textContent ?? "").trim();
-    const isOver = span.classList.contains("ls-ruby-bouten-over");
-    const isUnder = span.classList.contains("ls-ruby-bouten-under");
-    const isUnderline = span.classList.contains("ls-ruby-underline");
+    const isOver = span.classList.contains("ia-bouten-over");
+    const isUnder = span.classList.contains("ia-bouten-under");
+    const isUnderline = span.classList.contains("ia-underline");
     
     // Note: Macro format doesn't support bouten + underline combo directly,
     // so we convert to the primary effect (bouten)
@@ -797,7 +807,7 @@ function htmlElementsToMacro(root: HTMLElement): void {
     }
   }
 
-  for (const span of Array.from(root.querySelectorAll("span.ls-ruby-underline:not(.ls-ruby-bouten)"))) {
+  for (const span of Array.from(root.querySelectorAll("span.ia-underline:not(.ia-bouten)"))) {
     const base = (span.textContent ?? "").trim();
     const ulPat = underlinePatternFromClasses(span) ?? ".-";
     span.replaceWith(root.ownerDocument.createTextNode(`{{renderer :ruby, ${base}, ${ulPat}, under}}`));
@@ -833,7 +843,7 @@ export function anyToHTML(content: string): string {
 // ---------------------------------------------------------------------------
 
 export function rubyHtmlToMarkup(html: string): string {
-  if (!html.includes("<ruby") && !html.includes("ls-ruby")) return html;
+  if (!hasAnnotationHtml(html)) return html;
 
   const doc = new DOMParser().parseFromString(`<div>${html}</div>`, "text/html");
   const root = doc.body.firstElementChild as HTMLElement | null;
@@ -847,17 +857,17 @@ export function rubyHtmlToMarkup(html: string): string {
       if (!ruby.parentNode) continue;
 
       // Mixed ruby (ruby + bouten/underline)?
-      if (ruby.classList.contains("ls-ruby-mixed")) {
+      if (ruby.classList.contains("ia-ruby-mixed")) {
         const baseClone = ruby.cloneNode(true) as HTMLElement;
         baseClone.querySelectorAll("rt, rp").forEach((n) => n.remove());
         const base = (baseClone.textContent ?? "").trim();
         const rt = firstDirectChildByTag(ruby, "rt");
         const rubyText = rt ? (rt.textContent ?? "").trim() : "";
         if (!base || !rubyText) continue;
-        const rubyOp = ruby.classList.contains("ls-ruby-over") ? "^^" : "^_";
+        const rubyOp = ruby.classList.contains("ia-ruby-over") ? "^^" : "^_";
         const ulPat = underlinePatternFromClasses(ruby);
-        const isBoutenOver = ruby.classList.contains("ls-ruby-bouten-over");
-        const isBoutenUnder = ruby.classList.contains("ls-ruby-bouten-under");
+        const isBoutenOver = ruby.classList.contains("ia-bouten-over");
+        const isBoutenUnder = ruby.classList.contains("ia-bouten-under");
         let decoMarkup = "";
         if (ulPat) {
           decoMarkup = `^_(${ulPat})`;
@@ -886,7 +896,7 @@ export function rubyHtmlToMarkup(html: string): string {
 
         const levels = [...innerRts, ...outerRts].filter(Boolean);
         const ann = levels.join("|");
-        const innerOp = innerRuby.classList.contains("ls-ruby-over") ? "^^" : "^_";
+        const innerOp = innerRuby.classList.contains("ia-ruby-over") ? "^^" : "^_";
         ruby.replaceWith(doc.createTextNode(ann ? `[${base}]${innerOp}(${ann})` : base));
         continue;
       }
@@ -904,17 +914,17 @@ export function rubyHtmlToMarkup(html: string): string {
       );
       const levels = [...rts, ...rtcs].filter(Boolean);
       const ann = levels.join("|");
-      const op = ruby.classList.contains("ls-ruby-under") ? "^_" : "^^";
+      const op = ruby.classList.contains("ia-ruby-under") ? "^_" : "^^";
       ruby.replaceWith(doc.createTextNode(ann ? `[${base}]${op}(${ann})` : base));
     }
     rubies = Array.from(root.querySelectorAll("ruby"));
   }
 
-  for (const span of Array.from(root.querySelectorAll("span.ls-ruby-bouten"))) {
+  for (const span of Array.from(root.querySelectorAll("span.ia-bouten"))) {
     const base = (span.textContent ?? "").trim();
     if (!base) continue;
-    const isOver = span.classList.contains("ls-ruby-bouten-over");
-    const isUnder = span.classList.contains("ls-ruby-bouten-under");
+    const isOver = span.classList.contains("ia-bouten-over");
+    const isUnder = span.classList.contains("ia-bouten-under");
     const ulPattern = underlinePatternFromClasses(span);
     
     // Bouten + Underline combinations
@@ -931,7 +941,7 @@ export function rubyHtmlToMarkup(html: string): string {
     }
   }
 
-  for (const span of Array.from(root.querySelectorAll("span.ls-ruby-underline:not(.ls-ruby-bouten)"))) {
+  for (const span of Array.from(root.querySelectorAll("span.ia-underline:not(.ia-bouten)"))) {
     const base = (span.textContent ?? "").trim();
     const ulPat = underlinePatternFromClasses(span) ?? ".-";
     span.replaceWith(doc.createTextNode(`[${base}]^_(${ulPat})`));
@@ -947,7 +957,7 @@ export function rubyHtmlToMarkup(html: string): string {
 const SKIP_TAGS = new Set(["CODE", "PRE", "A", "RUBY", "SCRIPT", "STYLE"]);
 
 export function replaceRubyInElement(el: HTMLElement): void {
-  if (el.querySelector("ruby.ls-ruby, span.ls-ruby-bouten")) return;
+  if (el.querySelector("ruby.ia-ruby, span.ia-bouten")) return;
 
   let anyReplaced = false;
   const walk = (node: Node) => {

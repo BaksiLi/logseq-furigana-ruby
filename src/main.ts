@@ -15,21 +15,21 @@ async function main() {
   // ---------------------------------------------------------------------------
   logseq.provideStyle(`
     /* Base ruby */
-    ruby.ls-ruby { display: ruby; }
-    ruby.ls-ruby rt { font-size: 0.6em; line-height: 1; }
-    ruby.ls-ruby rtc rt { font-size: 0.6em; line-height: 1; }
+    ruby.ia-ruby { display: ruby; }
+    ruby.ia-ruby rt { font-size: 0.6em; line-height: 1; }
+    ruby.ia-ruby rtc rt { font-size: 0.6em; line-height: 1; }
 
     /* Single-level positioning */
-    ruby.ls-ruby.ls-ruby-over { ruby-position: over; }
-    ruby.ls-ruby.ls-ruby-under { ruby-position: under; }
+    ruby.ia-ruby.ia-ruby-over { ruby-position: over; }
+    ruby.ia-ruby.ia-ruby-under { ruby-position: under; }
 
     /* Double-level: nested ruby approach (Chromium doesn't support <rtc>).
        Outer ruby = opposite side, inner ruby = first operator's side. */
-    ruby.ls-ruby.ls-ruby-double { }
-    ruby.ls-ruby.ls-ruby-double > ruby { }
+    ruby.ia-ruby.ia-ruby-double { }
+    ruby.ia-ruby.ia-ruby-double > ruby { }
 
     /* Bouten over: real CSS text-emphasis dots */
-    span.ls-ruby-bouten.ls-ruby-bouten-over {
+    span.ia-bouten.ia-bouten-over {
       text-emphasis: filled dot;
       -webkit-text-emphasis: filled dot;
       text-emphasis-position: over right;
@@ -37,13 +37,13 @@ async function main() {
     }
 
     /* Bouten under: dotted underline (text-emphasis:under is clipped by Logseq) */
-    span.ls-ruby-bouten.ls-ruby-bouten-under {
+    span.ia-bouten.ia-bouten-under {
       text-decoration: underline dotted;
       text-underline-offset: 0.15em;
     }
 
     /* Both: text-emphasis over + dotted underline */
-    span.ls-ruby-bouten.ls-ruby-bouten-over.ls-ruby-bouten-under {
+    span.ia-bouten.ia-bouten-over.ia-bouten-under {
       text-emphasis: filled dot;
       -webkit-text-emphasis: filled dot;
       text-emphasis-position: over right;
@@ -53,15 +53,15 @@ async function main() {
     }
 
     /* Underline from ^_(.-) / ^_(.~) / ^_(.=) */
-    span.ls-ruby-underline {
+    span.ia-underline {
       text-decoration-line: underline;
       text-underline-offset: 0.15em;
     }
-    span.ls-ruby-underline.ls-ruby-underline-wavy { text-decoration-style: wavy; }
-    span.ls-ruby-underline.ls-ruby-underline-double { text-decoration-style: double; }
+    span.ia-underline.ia-underline-wavy { text-decoration-style: wavy; }
+    span.ia-underline.ia-underline-double { text-decoration-style: double; }
 
     /* Bouten over + underline: text-emphasis dots above + underline */
-    span.ls-ruby-bouten.ls-ruby-bouten-over.ls-ruby-underline {
+    span.ia-bouten.ia-bouten-over.ia-underline {
       text-emphasis: filled dot;
       -webkit-text-emphasis: filled dot;
       text-emphasis-position: over right;
@@ -71,13 +71,13 @@ async function main() {
     }
 
     /* Bouten under + underline: dotted underline becomes solid */
-    span.ls-ruby-bouten.ls-ruby-bouten-under.ls-ruby-underline {
+    span.ia-bouten.ia-bouten-under.ia-underline {
       text-decoration-line: underline;
       text-underline-offset: 0.15em;
     }
 
     /* Mixed: ruby annotation + bouten over */
-    ruby.ls-ruby-mixed.ls-ruby-bouten-over {
+    ruby.ia-ruby-mixed.ia-bouten-over {
       text-emphasis: filled dot;
       -webkit-text-emphasis: filled dot;
       text-emphasis-position: over right;
@@ -85,20 +85,20 @@ async function main() {
     }
 
     /* Mixed: ruby annotation + bouten under (dotted underline) */
-    ruby.ls-ruby-mixed.ls-ruby-bouten-under {
+    ruby.ia-ruby-mixed.ia-bouten-under {
       text-decoration: underline dotted;
       text-underline-offset: 0.15em;
     }
 
     /* Mixed: ruby annotation + underline */
-    ruby.ls-ruby-mixed.ls-ruby-underline {
+    ruby.ia-ruby-mixed.ia-underline {
       text-decoration-line: underline;
       text-underline-offset: 0.15em;
     }
 
     /* Underline style variants (apply to both span and ruby contexts) */
-    .ls-ruby-underline-wavy { text-decoration-style: wavy; }
-    .ls-ruby-underline-double { text-decoration-style: double; }
+    .ia-underline-wavy { text-decoration-style: wavy; }
+    .ia-underline-double { text-decoration-style: double; }
   `);
 
   // ---------------------------------------------------------------------------

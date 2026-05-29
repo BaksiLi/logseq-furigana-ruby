@@ -1,249 +1,136 @@
-# Markdown-it Ruby Plugin 開發計劃
+# Inline Annotation Roadmap
 
-## 目標
+## Goal
 
-創建一個標準的 `markdown-it-ruby` 插件，讓 `[base]^^(annotation)` / `[base]^_(annotation)` 語法能在任何支持 markdown-it 的環境中使用。
+Build **Inline Annotation** as a portable Markdown extension, not only a Logseq plugin.
 
-## 項目結構
+Spec title:
 
-```
-markdown-it-ruby/
-├── src/
-│   ├── index.ts                 # 主插件入口
-│   ├── parser.ts               # 從 logseq-furigana-ruby 移植的解析邏輯
-│   ├── tokenizer.ts            # markdown-it token 處理
-│   └── renderer.ts             # HTML 渲染器
-├── test/
-│   ├── fixtures/               # 測試用例
-│   └── index.test.ts           # 單元測試
-├── dist/                       # 編譯輸出
-├── package.json
-├── README.md
-└── tsconfig.json
-```
+> Markdown Inline Annotation Extension: A syntax specification for ruby, text emphasis, and complex text decorations.
 
-## 階段規劃
+The Logseq plugin is the reference implementation for the current feature set. The next implementation order is:
 
-### 階段 1：核心功能移植 (1-2週)
+1. `markdown-it-inline-annotation`
+2. Logseq polish
+3. Obsidian plugin
+4. remark/unified support
 
-#### 1.1 項目設置
-- [ ] 創建新的 npm 包 `markdown-it-ruby`
-- [ ] 設置 TypeScript 構建環境
-- [ ] 配置測試框架 (Jest/Vitest)
-- [ ] 設置 CI/CD (GitHub Actions)
+Remark/unified is intentionally later because it is not an immediate use case, but the spec and tests should avoid choices that would make a future micromark/remark adapter awkward.
 
-#### 1.2 解析器移植
-- [ ] 從 `logseq-furigana-ruby/src/parser.ts` 提取核心邏輯
-- [ ] 移除 Logseq 特定的代碼（DOM 操作、宏渲染等）
-- [ ] 保留核心解析功能：
-  - `rubyToHTML()` - 核心轉換函數
-  - `hasRuby()` - 檢測函數
-  - 所有特殊模式處理（bouten、underline、多層等）
+## Phase 1: markdown-it + Core
 
-#### 1.3 Markdown-it 集成
-```typescript
-// src/index.ts
-import MarkdownIt from 'markdown-it'
-import { rubyToHTML, hasRuby } from './parser'
+Replace the early `markdown-it-ruby-syntax` implementation with a new package named `markdown-it-inline-annotation`.
 
-function markdownItRuby(md: MarkdownIt, options = {}) {
-  // 註冊內聯規則，在 emphasis 之前處理
-  md.inline.ruler.before('emphasis', 'ruby', rubyRule, {
-    alt: ['paragraph', 'reference', 'autolink']
-  })
-  
-  // 註冊渲染器
-  md.renderer.rules.ruby_open = rubyRenderOpen
-  md.renderer.rules.ruby_close = rubyRenderClose
-  md.renderer.rules.ruby_text = rubyRenderText
-}
+Package shape:
 
-function rubyRule(state: StateInline, start: number, max: number, silent: boolean) {
-  // 檢測 ^^ 或 ^_ 模式
-  // 解析 [base]^^(annotation) 語法
-  // 創建 tokens
-}
+```text
+src/
+  core.ts       # parser, source-range model, safe HTML renderer
+  index.ts      # markdown-it adapter
+test.js         # conformance + markdown-it integration tests
+SPEC.md         # normative behavior
+README.md       # user docs
 ```
 
-### 階段 2：功能完善 (1週)
+Core syntax:
 
-#### 2.1 選項配置
-```typescript
-interface RubyOptions {
-  // CSS 類名前綴
-  classPrefix: string        // 默認 'ruby'
-  
-  // 內聯樣式選項
-  inlineStyles: boolean      // 默認 true（為了跨環境兼容性）
-  
-  // 特殊模式開關
-  enableBouten: boolean      // 默認 true
-  enableUnderline: boolean   // 默認 true
-  
-  // 字元對齊選項  
-  enableAlignment: boolean   // 默認 true
-  enableAutoHide: boolean    // 默認 true
-}
-```
+- `[base]^^(annotation)` and `[base]^_(annotation)`
+- `base^^(annotation)` and `base^_(annotation)` abbreviated form
+- `[base]^^(over|under)` as compact two-slot notation
+- `[base]^^(over)^_(under)` and reverse mixed chaining
+- per-character alignment when space-separated annotation counts match base characters
+- auto-hide matching base/annotation characters
+- nested bracket spans such as `[[護]^^(まも)れ]^_(プロテゴ)`
+- bouten modifier `..`
+- underline modifiers `.-`, `.~`, `.=`
 
-#### 2.2 CSS 輸出選項
-```typescript
-// 可選擇是否包含內聯樣式
-const md = new MarkdownIt()
-  .use(markdownItRuby, {
-    inlineStyles: false,  // 使用外部 CSS
-    classPrefix: 'my-ruby'
-  })
+Core design:
 
-// 提供 CSS 導出函數
-import { generateCSS } from 'markdown-it-ruby/css'
-const css = generateCSS({ prefix: 'my-ruby' })
-```
+- `^^` and `^_` are position-assignment operators for over/under slots.
+- Normal slot text renders as ruby.
+- Special slot values render as decoration modifiers.
+- v1 capacity is two slots. Additional pipe levels are ignored for compatibility with the Logseq implementation.
+- Output must escape user text before producing HTML.
+- The parser must preserve source ranges so other adapters can later map source text to AST nodes.
 
-### 階段 3：生態系統擴展 (2-3週)
+markdown-it design:
 
-#### 3.1 多平台支持包
-```
-@markdown-it-ruby/
-├── core                    # 核心包
-├── vscode                  # VS Code 擴展
-├── obsidian               # Obsidian 插件  
-├── typora                 # Typora 主題
-└── gatsby                 # Gatsby 插件
-```
+- Register an inline rule before `text`, so abbreviated forms and multiple annotations in one paragraph can be found before markdown-it collapses them into text tokens.
+- Do not override `renderer.rules.text`.
+- Stop scanning before Markdown constructs such as code spans, links, emphasis, raw HTML, and entities so markdown-it can parse them normally.
+- Emit portable HTML from core in v1; a semantic token renderer can be added after the grammar stabilizes.
 
-#### 3.2 工具鏈集成
-- [ ] **Webpack loader**: `ruby-loader`
-- [ ] **Rollup plugin**: `rollup-plugin-ruby`
-- [ ] **Vite plugin**: `vite-plugin-ruby`
-- [ ] **Astro integration**: `@astrojs/ruby`
+## Phase 2: Logseq Polish
 
-### 階段 4：進階特性 (1-2週)
+Keep the existing Logseq plugin behavior stable, then improve it using the lessons from the markdown-it port.
 
-#### 4.1 語法擴展
-```markdown
-<!-- 支持更多語法糖 -->
-漢字^^かんじ              # 簡化語法（可選）
-漢字^^(かんじ){.important} # 附加 CSS 類
-漢字^^(かんじ)[title]      # 添加 title 屬性
-```
+Priorities:
 
-#### 4.2 互操作性
-```typescript
-// 與現有 Logseq 插件的兼容層
-import { logseqCompat } from 'markdown-it-ruby/compat'
+- Document Logseq's host limitation clearly: multiple inline `^^()` / `^_()` in one bullet can be parsed as Logseq highlight/italic before the plugin runs.
+- Keep macro and HTML conversion as the recommended workaround.
+- Optionally add a setting or command that converts selected inline markup to macro/HTML before Logseq's parser can conflict.
+- Consider adopting the shared core after markdown-it has proven the parser and tests.
 
-const md = new MarkdownIt()
-  .use(markdownItRuby)
-  .use(logseqCompat)  // 支持宏語法轉換
-```
+Do not try to make the Logseq host behave like a real Markdown postprocessor unless Logseq exposes a suitable API.
 
-## 技術細節
+## Phase 3: Obsidian
 
-### Token 設計
-```typescript
-interface RubyToken {
-  type: 'ruby_open' | 'ruby_close' | 'ruby_text'
-  tag: 'ruby' | 'rt' | 'rp' | 'span'
-  content: string
-  attrSet: (name: string, value: string) => void
-  meta: {
-    base: string
-    annotations: string[]
-    position: 'over' | 'under' | 'both'
-    special: 'bouten' | 'underline' | null
-    aligned: boolean
-  }
-}
-```
+Build an Obsidian plugin after markdown-it is stable.
 
-### 優先級處理
-```typescript
-// 確保 ruby 語法不與其他插件衝突
-md.inline.ruler.before('emphasis', 'ruby', rubyRule)
-md.inline.ruler.before('strikethrough', 'ruby', rubyRule)
-```
+First version:
 
-## 測試策略
+- reading-view postprocessor using the shared core
+- CSS for ruby, bouten, and underline modifiers
+- no Live Preview guarantee in v1
 
-### 單元測試
-```typescript
-// test/index.test.ts
-describe('markdown-it-ruby', () => {
-  test('basic ruby annotation', () => {
-    const result = md.render('[漢字]^^(かんじ)')
-    expect(result).toContain('<ruby class="ruby ruby-over">')
-  })
-  
-  test('per-character alignment', () => {
-    const result = md.render('[春夏]^^(はる なつ)')
-    expect(result).toMatch(/春.*はる.*夏.*なつ/)
-  })
-  
-  test('special patterns', () => {
-    expect(md.render('重要^^(..)'))
-      .toContain('ls-ruby-bouten')
-  })
-})
-```
+Later:
 
-### 兼容性測試
-- 測試與常見 markdown-it 插件的兼容性
-- 測試不同瀏覽器的渲染效果
-- 測試性能（大文檔處理）
+- Live Preview/editor support if Obsidian APIs make it reliable
+- optional conversion commands similar to Logseq
 
-## 發布計劃
+## Phase 4: remark/unified
 
-### NPM 發布
-```json
-{
-  "name": "markdown-it-ruby",
-  "version": "1.0.0",
-  "keywords": ["markdown-it", "ruby", "furigana", "annotation"],
-  "peerDependencies": {
-    "markdown-it": "^13.0.0"
-  }
-}
-```
+Support the unified ecosystem when there is a concrete use case.
 
-### 文檔網站
-- 使用 VitePress 創建文檔網站
-- 集成實時預覽功能
-- 提供所有範例的互動演示
+Target package family:
 
-## 回饋到現有項目
+- `micromark-extension-inline-annotation`
+- `mdast-util-inline-annotation`
+- `remark-inline-annotation`
 
-### Logseq 插件重構
-```typescript
-// 更新 logseq-furigana-ruby 使用新的核心包
-import { rubyToHTML, anyToHTML } from 'markdown-it-ruby/core'
+Compatibility constraints to keep in mind now:
 
-// 保持現有 API 不變，但使用共享的解析邏輯
-```
+- syntax must be expressible as a real inline tokenizer, not a post-render replacement
+- source ranges should remain available
+- HTML rendering should be separate from parse semantics
+- fixtures should be reusable across markdown-it and future remark tests
 
-### 版本策略
-- 核心解析邏輯版本同步
-- 向後兼容保證
-- 漸進式遷移路徑
+## Test Strategy
 
-## 預期效益
+Maintain shared fixtures that cover:
 
-1. **標準化**: 讓 ruby 語法成為 Markdown 生態系統的標準之一
-2. **可移植性**: 代碼可在任何 markdown-it 環境中使用
-3. **維護性**: 單一核心，多平台復用
-4. **社群**: 吸引更多開發者參與和貢獻
+- basic over/under ruby
+- abbreviated syntax
+- pipe two-slot notation
+- mixed chaining and same-operator non-chaining
+- per-character alignment and auto-hide
+- nested bracket spans
+- bouten and underline modifiers
+- escaped `|`, `)`, `]`, and backslash
+- multiple annotations in one paragraph
+- code span, link, emphasis, HTML, and entity interactions
+- XSS escaping in base and annotation text
 
-## 風險評估
+Acceptance for phase 1:
 
-### 技術風險
-- **性能**: 複雜的解析邏輯可能影響渲染速度
-- **兼容性**: 與其他 markdown-it 插件的衝突
+- `npm test` passes for core and markdown-it integration cases
+- `npm run build` exits successfully
+- old escaped-pipe failure is fixed
+- markdown-it can render two or more annotations in one paragraph without relying on Logseq workarounds
 
-### 解決方案
-- 使用 benchmark 測試優化性能
-- 提供插件優先級配置
-- 編寫詳細的兼容性指南
+## Naming
 
----
-
-你覺得這個計劃如何？我們可以先從核心功能移植開始，這樣你現有的工作就能立即受益，而不是變得徒勞無功。
+- Brand: **Inline Annotation**
+- markdown-it package: `markdown-it-inline-annotation`
+- future shared package name: `@inline-annotation/core`
+- canonical spelling in code/docs: `bouten`

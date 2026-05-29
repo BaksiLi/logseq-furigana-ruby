@@ -1,9 +1,14 @@
 # logseq-furigana-ruby
 
-Logseq plugin for inline annotation using the `^^()`/`^_()` syntax.
+Logseq plugin for **Inline Annotation** — ruby/furigana, bouten, and underline marks using the `^^()`/`^_()` syntax.
 
-> A markdown-it plugin and VS Code extension are planned.
-> Checkout [Baksi's Proposal](https://blog.baksili.codes/markdown-ruby).
+This plugin is the reference implementation of the Inline Annotation syntax. The portable grammar and HTML class contract are defined in the shared spec, and a markdown-it port is available:
+
+> - **Spec:** [Markdown Inline Annotation Extension](https://github.com/BaksiLi/markdown-it-inline-annotation/blob/main/SPEC.md)
+> - **markdown-it plugin:** [`markdown-it-inline-annotation`](https://github.com/BaksiLi/markdown-it-inline-annotation)
+> - **Proposal:** [Baksi's Proposal](https://blog.baksili.codes/markdown-ruby)
+
+This plugin emits the canonical `ia-*` HTML class contract, so it shares one stylesheet family with every other Inline Annotation implementation.
 
 ## Basic Syntax
 
@@ -17,39 +22,39 @@ Supports various ruby annotation styles:
 
 #### Basic Ruby
 - `[base]^^(ruby)` – annotation above
-    > <ruby class="ls-ruby ls-ruby-over">base<rp>(</rp><rt>ruby</rt><rp>)</rp></ruby>
+    > <ruby class="ia-ruby ia-ruby-over">base<rp>(</rp><rt>ruby</rt><rp>)</rp></ruby>
 - `[base]^_(ruby)` — annotation below
-    > <ruby class="ls-ruby ls-ruby-under">base<rp>(</rp><rt>ruby</rt><rp>)</rp></ruby>
+    > <ruby class="ia-ruby ia-ruby-under">base<rp>(</rp><rt>ruby</rt><rp>)</rp></ruby>
 - `[北京]^^(ペキン|Beijing)` — annotation two-level (above + below)
-    > <ruby class="ls-ruby ls-ruby-under ls-ruby-double"><ruby class="ls-ruby ls-ruby-over">北京<rp>(</rp><rt>ペキン</rt><rp>)</rp></ruby><rp>(</rp><rt>Beijing</rt><rp>)</rp></ruby>
+    > <ruby class="ia-ruby ia-ruby-under ia-ruby-double"><ruby class="ia-ruby ia-ruby-over">北京<rp>(</rp><rt>ペキン</rt><rp>)</rp></ruby><rp>(</rp><rt>Beijing</rt><rp>)</rp></ruby>
 
 N.B. `base^^(ruby)` – `[]` can be ommitted.
 
 #### Per-Character Ruby (rendering)
 - `[春夏秋冬]^^(はる なつ あき ふゆ)` — auto-aligns each character with its annotation
-    > <ruby class="ls-ruby ls-ruby-over">春<rp>(</rp><rt>はる</rt><rp>)</rp></ruby><ruby class="ls-ruby ls-ruby-over">夏<rp>(</rp><rt>なつ</rt><rp>)</rp></ruby><ruby class="ls-ruby ls-ruby-over">秋<rp>(</rp><rt>あき</rt><rp>)</rp></ruby><ruby class="ls-ruby ls-ruby-over">冬<rp>(</rp><rt>ふゆ</rt><rp>)</rp></ruby>
+    > <ruby class="ia-ruby ia-ruby-over">春<rp>(</rp><rt>はる</rt><rp>)</rp></ruby><ruby class="ia-ruby ia-ruby-over">夏<rp>(</rp><rt>なつ</rt><rp>)</rp></ruby><ruby class="ia-ruby ia-ruby-over">秋<rp>(</rp><rt>あき</rt><rp>)</rp></ruby><ruby class="ia-ruby ia-ruby-over">冬<rp>(</rp><rt>ふゆ</rt><rp>)</rp></ruby>
 - `[振り仮名]^^(ふ り が な)` — identical characters auto-hidden (り→り omitted)
-    > <ruby class="ls-ruby ls-ruby-over">振<rp>(</rp><rt>ふ</rt><rp>)</rp></ruby><ruby class="ls-ruby ls-ruby-over">り<rp>(</rp><rt></rt><rp>)</rp></ruby><ruby class="ls-ruby ls-ruby-over">仮<rp>(</rp><rt>が</rt><rp>)</rp></ruby><ruby class="ls-ruby ls-ruby-over">名<rp>(</rp><rt>な</rt><rp>)</rp></ruby>
+    > <ruby class="ia-ruby ia-ruby-over">振<rp>(</rp><rt>ふ</rt><rp>)</rp></ruby><ruby class="ia-ruby ia-ruby-over">り<rp>(</rp><rt></rt><rp>)</rp></ruby><ruby class="ia-ruby ia-ruby-over">仮<rp>(</rp><rt>が</rt><rp>)</rp></ruby><ruby class="ia-ruby ia-ruby-over">名<rp>(</rp><rt>な</rt><rp>)</rp></ruby>
 
 #### Nested / Partially Overlapping Ruby
 - `[base]^^(over)^_(under)` — chained annotations
-    > <ruby class="ls-ruby ls-ruby-under ls-ruby-double" style="ruby-position:under"><ruby class="ls-ruby ls-ruby-over">base<rp>(</rp><rt>over</rt><rp>)</rp></ruby><rp>(</rp><rt>under</rt><rp>)</rp></ruby>
+    > <ruby class="ia-ruby ia-ruby-under ia-ruby-double" style="ruby-position:under"><ruby class="ia-ruby ia-ruby-over">base<rp>(</rp><rt>over</rt><rp>)</rp></ruby><rp>(</rp><rt>under</rt><rp>)</rp></ruby>
 - `[[護]^^(まも)れ]^_(プロテゴ)` — inner ruby + outer annotation on a larger span
-    > <ruby class="ls-ruby ls-ruby-under" style="ruby-position:under"><ruby class="ls-ruby ls-ruby-over">護<rp>(</rp><rt>まも</rt><rp>)</rp></ruby>れ<rp>(</rp><rt>プロテゴ</rt><rp>)</rp></ruby>
+    > <ruby class="ia-ruby ia-ruby-under" style="ruby-position:under"><ruby class="ia-ruby ia-ruby-over">護<rp>(</rp><rt>まも</rt><rp>)</rp></ruby>れ<rp>(</rp><rt>プロテゴ</rt><rp>)</rp></ruby>
 
 #### Bouten & Underline
 - `base^^(..)` — bouten (emphasis dots) above
-    > <span class="ls-ruby-bouten ls-ruby-bouten-over" style="text-emphasis:filled dot;-webkit-text-emphasis:filled dot;text-emphasis-position:over right;-webkit-text-emphasis-position:over right">base</span>
+    > <span class="ia-bouten ia-bouten-over" style="text-emphasis:filled dot;-webkit-text-emphasis:filled dot;text-emphasis-position:over right;-webkit-text-emphasis-position:over right">base</span>
 - `base^_(..)` — dotted underline
-    > <span class="ls-ruby-bouten ls-ruby-bouten-under" style="text-decoration:underline dotted;text-underline-offset:0.15em">base</span>
+    > <span class="ia-bouten ia-bouten-under" style="text-decoration:underline dotted;text-underline-offset:0.15em">base</span>
 - `base^_(.-)` — solid underline
-    > <span class="ls-ruby-underline" style="text-decoration-line:underline;text-underline-offset:0.15em">base</span>
+    > <span class="ia-underline" style="text-decoration-line:underline;text-underline-offset:0.15em">base</span>
 - `base^_(.=)` — double underline
-    > <span class="ls-ruby-underline ls-ruby-underline-double" style="text-decoration-line:underline;text-underline-offset:0.15em;text-decoration-style:double">base</span>
+    > <span class="ia-underline ia-underline-double" style="text-decoration-line:underline;text-underline-offset:0.15em;text-decoration-style:double">base</span>
 - `base^_(.~)` — wavy underline
-    > <span class="ls-ruby-underline ls-ruby-underline-wavy" style="text-decoration-line:underline;text-underline-offset:0.15em;text-decoration-style:wavy">base</span>
+    > <span class="ia-underline ia-underline-wavy" style="text-decoration-line:underline;text-underline-offset:0.15em;text-decoration-style:wavy">base</span>
 - `base^^(..)^_(..)` — two-levels
-    > <span class="ls-ruby-bouten ls-ruby-bouten-over ls-ruby-bouten-under" style="text-emphasis:filled dot;-webkit-text-emphasis:filled dot;text-emphasis-position:over right;-webkit-text-emphasis-position:over right;text-decoration:underline dotted;text-underline-offset:0.15em">base</span>
+    > <span class="ia-bouten ia-bouten-over ia-bouten-under" style="text-emphasis:filled dot;-webkit-text-emphasis:filled dot;text-emphasis-position:over right;-webkit-text-emphasis-position:over right;text-decoration:underline dotted;text-underline-offset:0.15em">base</span>
 
 ### Macro Syntax (Logseq)
 
@@ -68,38 +73,38 @@ Here are some interesting use cases:
 
 **Furigana / phonetic guides**
 - `[取り返す]^^(と り かえ す)` – Japanese kanji → hiragana
-    > <ruby class="ls-ruby ls-ruby-over">取<rp>(</rp><rt>と</rt><rp>)</rp></ruby><ruby class="ls-ruby ls-ruby-over">り<rp>(</rp><rt></rt><rp>)</rp></ruby><ruby class="ls-ruby ls-ruby-over">返<rp>(</rp><rt>かえ</rt><rp>)</rp></ruby><ruby class="ls-ruby ls-ruby-over">す<rp>(</rp><rt></rt><rp>)</rp></ruby>
+    > <ruby class="ia-ruby ia-ruby-over">取<rp>(</rp><rt>と</rt><rp>)</rp></ruby><ruby class="ia-ruby ia-ruby-over">り<rp>(</rp><rt></rt><rp>)</rp></ruby><ruby class="ia-ruby ia-ruby-over">返<rp>(</rp><rt>かえ</rt><rp>)</rp></ruby><ruby class="ia-ruby ia-ruby-over">す<rp>(</rp><rt></rt><rp>)</rp></ruby>
 - `[李太白]^^(Lǐ Tài Bái|ㄌㄧˇ ㄊㄞˋ ㄅㄞˊ)` — Chinese characters → pinyin/bopomofo
-    > <ruby class="ls-ruby ls-ruby-under ls-ruby-double" style="ruby-position:under"><ruby class="ls-ruby ls-ruby-over">李<rp>(</rp><rt>Lǐ</rt><rp>)</rp></ruby><rp>(</rp><rt>ㄌㄧˇ</rt><rp>)</rp></ruby><ruby class="ls-ruby ls-ruby-under ls-ruby-double" style="ruby-position:under"><ruby class="ls-ruby ls-ruby-over">太<rp>(</rp><rt>Tài</rt><rp>)</rp></ruby><rp>(</rp><rt>ㄊㄞˋ</rt><rp>)</rp></ruby><ruby class="ls-ruby ls-ruby-under ls-ruby-double" style="ruby-position:under"><ruby class="ls-ruby ls-ruby-over">白<rp>(</rp><rt>Bái</rt><rp>)</rp></ruby><rp>(</rp><rt>ㄅㄞˊ</rt><rp>)</rp></ruby>
+    > <ruby class="ia-ruby ia-ruby-under ia-ruby-double" style="ruby-position:under"><ruby class="ia-ruby ia-ruby-over">李<rp>(</rp><rt>Lǐ</rt><rp>)</rp></ruby><rp>(</rp><rt>ㄌㄧˇ</rt><rp>)</rp></ruby><ruby class="ia-ruby ia-ruby-under ia-ruby-double" style="ruby-position:under"><ruby class="ia-ruby ia-ruby-over">太<rp>(</rp><rt>Tài</rt><rp>)</rp></ruby><rp>(</rp><rt>ㄊㄞˋ</rt><rp>)</rp></ruby><ruby class="ia-ruby ia-ruby-under ia-ruby-double" style="ruby-position:under"><ruby class="ia-ruby ia-ruby-over">白<rp>(</rp><rt>Bái</rt><rp>)</rp></ruby><rp>(</rp><rt>ㄅㄞˊ</rt><rp>)</rp></ruby>
 
 N.B. Characters can be auto-aligned.
 Space-separate annotations to match base characters 1:1. Mismatched counts fall back to group ruby.
 
 **Translations**
 - `cat^^(chat|猫)` — English → French (over) + Chinese (under)
-    > <ruby class="ls-ruby ls-ruby-under ls-ruby-double" style="ruby-position:under"><ruby class="ls-ruby ls-ruby-over">cat<rp>(</rp><rt>chat</rt><rp>)</rp></ruby><rp>(</rp><rt>猫</rt><rp>)</rp></ruby>
+    > <ruby class="ia-ruby ia-ruby-under ia-ruby-double" style="ruby-position:under"><ruby class="ia-ruby ia-ruby-over">cat<rp>(</rp><rt>chat</rt><rp>)</rp></ruby><rp>(</rp><rt>猫</rt><rp>)</rp></ruby>
 - `貓^^(猫)` — Traditional Chinese → Simplified Chinese
-    > <ruby class="ls-ruby ls-ruby-over">貓<rp>(</rp><rt>猫</rt><rp>)</rp></ruby>
+    > <ruby class="ia-ruby ia-ruby-over">貓<rp>(</rp><rt>猫</rt><rp>)</rp></ruby>
 
 **Transcription / transliteration**
 - `猫^^(ねこ|neko)` — kanji → hiragana (over) + romaji (under)
-    > <ruby class="ls-ruby ls-ruby-under ls-ruby-double" style="ruby-position:under"><ruby class="ls-ruby ls-ruby-over">猫<rp>(</rp><rt>ねこ</rt><rp>)</rp></ruby><rp>(</rp><rt>neko</rt><rp>)</rp></ruby>
+    > <ruby class="ia-ruby ia-ruby-under ia-ruby-double" style="ruby-position:under"><ruby class="ia-ruby ia-ruby-over">猫<rp>(</rp><rt>ねこ</rt><rp>)</rp></ruby><rp>(</rp><rt>neko</rt><rp>)</rp></ruby>
 - `貓^^(māo|cat)` — Chinese → pinyin (over) + English (under)
-    > <ruby class="ls-ruby ls-ruby-under ls-ruby-double" style="ruby-position:under"><ruby class="ls-ruby ls-ruby-over">貓<rp>(</rp><rt>māo</rt><rp>)</rp></ruby><rp>(</rp><rt>cat</rt><rp>)</rp></ruby>
+    > <ruby class="ia-ruby ia-ruby-under ia-ruby-double" style="ruby-position:under"><ruby class="ia-ruby ia-ruby-over">貓<rp>(</rp><rt>māo</rt><rp>)</rp></ruby><rp>(</rp><rt>cat</rt><rp>)</rp></ruby>
 - `Москва^^(Moskva)` — Cyrillic → Latin
-    > <ruby class="ls-ruby ls-ruby-over">Москва<rp>(</rp><rt>Moskva</rt><rp>)</rp></ruby>
+    > <ruby class="ia-ruby ia-ruby-over">Москва<rp>(</rp><rt>Moskva</rt><rp>)</rp></ruby>
 - `cat^^(/kæt/)` — IPA transcription
-    > <ruby class="ls-ruby ls-ruby-over">cat<rp>(</rp><rt>/kæt/</rt><rp>)</rp></ruby>
+    > <ruby class="ia-ruby ia-ruby-over">cat<rp>(</rp><rt>/kæt/</rt><rp>)</rp></ruby>
 
 **Emphasis / study aids**
 - `重要^^(..)` — bouten dots for emphasis
-    > <span class="ls-ruby-bouten ls-ruby-bouten-over" style="text-emphasis:filled dot;-webkit-text-emphasis:filled dot;text-emphasis-position:over right;-webkit-text-emphasis-position:over right">重要</span>
+    > <span class="ia-bouten ia-bouten-over" style="text-emphasis:filled dot;-webkit-text-emphasis:filled dot;text-emphasis-position:over right;-webkit-text-emphasis-position:over right">重要</span>
 - `重要語句^^(じゅうようごく|.-)` — furigana above + underline for vocabulary study
-    > <ruby class="ls-ruby ls-ruby-mixed ls-ruby-over ls-ruby-underline" style="text-decoration-line:underline;text-underline-offset:0.15em">重要語句<rp>(</rp><rt>じゅうようごく</rt><rp>)</rp></ruby>
+    > <ruby class="ia-ruby ia-ruby-mixed ia-ruby-over ia-underline" style="text-decoration-line:underline;text-underline-offset:0.15em">重要語句<rp>(</rp><rt>じゅうようごく</rt><rp>)</rp></ruby>
 
 **Title**
 - `[初音ミク^^(偉大なる|世界一姫様)]^_(Vocaloid)` – pile up titles around a name
-    > <ruby class="ls-ruby ls-ruby-under" style="ruby-position:under"><ruby class="ls-ruby ls-ruby-under ls-ruby-double" style="ruby-position:under"><ruby class="ls-ruby ls-ruby-over">初音ミク<rp>(</rp><rt>偉大なる</rt><rp>)</rp></ruby><rp>(</rp><rt>世界一姫様</rt><rp>)</rp></ruby><rp>(</rp><rt>Vocaloid</rt><rp>)</rp></ruby>
+    > <ruby class="ia-ruby ia-ruby-under" style="ruby-position:under"><ruby class="ia-ruby ia-ruby-under ia-ruby-double" style="ruby-position:under"><ruby class="ia-ruby ia-ruby-over">初音ミク<rp>(</rp><rt>偉大なる</rt><rp>)</rp></ruby><rp>(</rp><rt>世界一姫様</rt><rp>)</rp></ruby><rp>(</rp><rt>Vocaloid</rt><rp>)</rp></ruby>
 
 ## Conversion Commands
 

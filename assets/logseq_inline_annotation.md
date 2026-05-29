@@ -2,7 +2,7 @@
 	- `漢字^^(かんじ)` 漢字^^(かんじ)
 	- `**H**₂O^^(**Hydrogen** Dioxide)` H₂O^^(Hydrogen Dioxide)
 - ### Below (`^_`)
-	- `cat^_(/kæt/)` <ruby class="ls-ruby ls-ruby-under">cat<rp>(</rp><rt>/kæt/</rt><rp>)</rp></ruby>
+	- `cat^_(/kæt/)` <ruby class="ia-ruby ia-ruby-under">cat<rp>(</rp><rt>/kæt/</rt><rp>)</rp></ruby>
 - ### Both
 	- `北京^^(Beijing|PKG)` 北京^^(Beijing|PKG)
 		- `[base]^^(over)^_(under)` [base]^^(over)^_(under)

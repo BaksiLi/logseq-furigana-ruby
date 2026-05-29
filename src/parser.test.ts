@@ -18,12 +18,12 @@ describe("hasRuby", () => {
 describe("rubyToHTML — basic", () => {
   it("[漢字]^^(かんじ)", () => {
     expect(rubyToHTML("[漢字]^^(かんじ)")).toBe(
-      '<ruby class="ls-ruby ls-ruby-over">漢字<rp>(</rp><rt>かんじ</rt><rp>)</rp></ruby>'
+      '<ruby class="ia-ruby ia-ruby-over">漢字<rp>(</rp><rt>かんじ</rt><rp>)</rp></ruby>'
     );
   });
   it("abbreviated form", () => {
     expect(rubyToHTML("東京^^(とうきょう)")).toBe(
-      '<ruby class="ls-ruby ls-ruby-over">東京<rp>(</rp><rt>とうきょう</rt><rp>)</rp></ruby>'
+      '<ruby class="ia-ruby ia-ruby-over">東京<rp>(</rp><rt>とうきょう</rt><rp>)</rp></ruby>'
     );
   });
   it("preserves surrounding text", () => {
@@ -43,12 +43,12 @@ describe("rubyToHTML — basic", () => {
 // ---------------------------------------------------------------------------
 describe("rubyToHTML — under", () => {
   it("[base]^_(ruby)", () => {
-    expect(rubyToHTML("[base]^_(ruby)")).toContain("ls-ruby-under");
+    expect(rubyToHTML("[base]^_(ruby)")).toContain("ia-ruby-under");
   });
   it("[漢字]^_(s) single char", () => {
     const r = rubyToHTML("[漢字]^_(s)");
     expect(r).toContain("<ruby");
-    expect(r).toContain("ls-ruby-under");
+    expect(r).toContain("ia-ruby-under");
     expect(r).toContain("<rt>s</rt>");
   });
 });
@@ -59,11 +59,11 @@ describe("rubyToHTML — under", () => {
 describe("rubyToHTML — multi-level", () => {
   it("2 levels via pipe → nested ruby", () => {
     const r = rubyToHTML("[北京]^^(ペキン|Beijing)");
-    expect(r).toContain("ls-ruby-double");
+    expect(r).toContain("ia-ruby-double");
     expect(r).toContain("<rt>ペキン</rt>");
     expect(r).toContain("<rt>Beijing</rt>");
     // Inner ruby should be over, outer under (opposite of first op ^^)
-    expect(r).toMatch(/ls-ruby-under.*ls-ruby-double/);
+    expect(r).toMatch(/ia-ruby-under.*ia-ruby-double/);
   });
   it("caps at 2", () => {
     const r = rubyToHTML("[北京]^^(a|b|c)");
@@ -77,68 +77,68 @@ describe("rubyToHTML — multi-level", () => {
 describe("rubyToHTML — chaining", () => {
   it("mixed chain ^^(...)^_(...)", () => {
     const r = rubyToHTML("[base]^^(over)^_(under)");
-    expect(r).toContain("ls-ruby-double");
+    expect(r).toContain("ia-ruby-double");
     expect(r).toContain("<rt>over</rt>");
     expect(r).toContain("<rt>under</rt>");
   });
   it("reverse chain ^_(...)^^(...)", () => {
     const r = rubyToHTML("[base]^_(a)^^(b)");
-    expect(r).toContain("ls-ruby-double");
+    expect(r).toContain("ia-ruby-double");
   });
   it("same-op not chained", () => {
     const r = rubyToHTML("[base]^^(a)^^(b)");
-    expect(r).not.toContain("ls-ruby-double");
+    expect(r).not.toContain("ia-ruby-double");
   });
   it("mixed: ruby over + bouten under ^^(a)^_(..)", () => {
     const r = rubyToHTML("[漢字]^^(a)^_(..)");
     expect(r).toContain("<ruby");
     expect(r).toContain("<rt>a</rt>");
-    expect(r).toContain("ls-ruby-mixed");
-    expect(r).toContain("ls-ruby-bouten-under");
-    expect(r).not.toContain("ls-ruby-double");
+    expect(r).toContain("ia-ruby-mixed");
+    expect(r).toContain("ia-bouten-under");
+    expect(r).not.toContain("ia-ruby-double");
   });
   it("mixed: ruby over + underline ^^(a)^_(.-)", () => {
     const r = rubyToHTML("[漢字]^^(a)^_(.-)");
     expect(r).toContain("<ruby");
     expect(r).toContain("<rt>a</rt>");
-    expect(r).toContain("ls-ruby-mixed");
-    expect(r).toContain("ls-ruby-underline");
-    expect(r).not.toContain("ls-ruby-double");
+    expect(r).toContain("ia-ruby-mixed");
+    expect(r).toContain("ia-underline");
+    expect(r).not.toContain("ia-ruby-double");
   });
   it("mixed: ruby + ruby ^^(a)^_(s)", () => {
     const r = rubyToHTML("[漢字]^^(a)^_(s)");
     expect(r).toContain("<ruby");
     expect(r).toContain("<rt>a</rt>");
     expect(r).toContain("<rt>s</rt>");
-    expect(r).toContain("ls-ruby-double");
+    expect(r).toContain("ia-ruby-double");
   });
   it("mixed: bouten over + ruby under ^^(..)^_(s)", () => {
     const r = rubyToHTML("[漢字]^^(..)^_(s)");
     expect(r).toContain("<ruby");
     expect(r).toContain("<rt>s</rt>");
-    expect(r).toContain("ls-ruby-mixed");
-    expect(r).toContain("ls-ruby-bouten-over");
-    expect(r).not.toContain("ls-ruby-double");
+    expect(r).toContain("ia-ruby-mixed");
+    expect(r).toContain("ia-bouten-over");
+    expect(r).not.toContain("ia-ruby-double");
   });
   it("mixed: ruby under + bouten over ^_(s)^^(..)", () => {
     const r = rubyToHTML("[漢字]^_(s)^^(..)");
     expect(r).toContain("<ruby");
     expect(r).toContain("<rt>s</rt>");
-    expect(r).toContain("ls-ruby-mixed");
-    expect(r).toContain("ls-ruby-bouten-over");
+    expect(r).toContain("ia-ruby-mixed");
+    expect(r).toContain("ia-bouten-over");
   });
   it("mixed: underline + bouten over ^_(.-)^^(..)", () => {
     const r = rubyToHTML("[漢字]^_(.-)^^(..)");
-    expect(r).toContain("ls-ruby-bouten");
-    expect(r).toContain("ls-ruby-underline");
-    expect(r).toContain("ls-ruby-bouten-over");
+    expect(r).toContain("ia-bouten");
+    expect(r).toContain("ia-underline");
+    expect(r).toContain("ia-bouten-over");
   });
   it("pipe + chain conflict: pipe wins, chain consumed", () => {
     const r = rubyToHTML("[李太白]^^(り たい はく|Lǐ Tài Bái)^_(..)");
-    expect(r).toContain("ls-ruby-double");
+    expect(r).toContain("ia-ruby-double");
     expect(r).toContain("<rt>り</rt>");
     expect(r).toContain("<rt>Lǐ</rt>");
-    expect(r).not.toContain("ls-ruby-bouten");
+    expect(r).not.toContain("ia-bouten");
     // Chained ^_(..) should be consumed, not left as literal text
     expect(r).not.toContain("^_");
     expect(r).not.toContain("..");
@@ -152,50 +152,50 @@ describe("rubyToHTML — pipe-separated special patterns", () => {
   it("ruby + underline via pipe ^^(text|.-)", () => {
     const r = rubyToHTML("[李太白]^^(り たい はく|.-)");
     expect(r).toContain("<ruby");
-    expect(r).toContain("ls-ruby-mixed");
-    expect(r).toContain("ls-ruby-underline");
-    expect(r).toContain("ls-ruby-over");
+    expect(r).toContain("ia-ruby-mixed");
+    expect(r).toContain("ia-underline");
+    expect(r).toContain("ia-ruby-over");
     expect(r).not.toContain(".-");
   });
   it("ruby + bouten via pipe ^^(text|..)", () => {
     const r = rubyToHTML("[漢字]^^(かんじ|..)");
     expect(r).toContain("<ruby");
-    expect(r).toContain("ls-ruby-mixed");
-    expect(r).toContain("ls-ruby-bouten-under");
+    expect(r).toContain("ia-ruby-mixed");
+    expect(r).toContain("ia-bouten-under");
     expect(r).toContain("<rt>かんじ</rt>");
   });
   it("bouten + ruby via pipe ^^(..|text)", () => {
     const r = rubyToHTML("[漢字]^^(..|under)");
     expect(r).toContain("<ruby");
-    expect(r).toContain("ls-ruby-mixed");
-    expect(r).toContain("ls-ruby-bouten-over");
+    expect(r).toContain("ia-ruby-mixed");
+    expect(r).toContain("ia-bouten-over");
     expect(r).toContain("<rt>under</rt>");
   });
   it("underline + ruby via pipe ^_(.-|text)", () => {
     const r = rubyToHTML("[漢字]^_(.-|over)");
     expect(r).toContain("<ruby");
-    expect(r).toContain("ls-ruby-mixed");
-    expect(r).toContain("ls-ruby-underline");
+    expect(r).toContain("ia-ruby-mixed");
+    expect(r).toContain("ia-underline");
     expect(r).toContain("<rt>over</rt>");
   });
   it("both special via pipe ^^(..|..)", () => {
     const r = rubyToHTML("[漢字]^^(..|..)");
-    expect(r).toContain("ls-ruby-bouten-over");
-    expect(r).toContain("ls-ruby-bouten-under");
+    expect(r).toContain("ia-bouten-over");
+    expect(r).toContain("ia-bouten-under");
     expect(r).not.toContain("<ruby");
   });
   it("both special via pipe ^^(..|.-)", () => {
     const r = rubyToHTML("[漢字]^^(..|.-)");
-    expect(r).toContain("ls-ruby-bouten-over");
-    expect(r).toContain("ls-ruby-underline");
+    expect(r).toContain("ia-bouten-over");
+    expect(r).toContain("ia-underline");
   });
   it(".- at over position is NOT underline ^^(.-|text)", () => {
     // .- only means underline when at the ^_ (under) position
     const r = rubyToHTML("[aa]^^(.-|bb)");
     expect(r).toContain("<rt>.-</rt>");
     expect(r).toContain("<rt>bb</rt>");
-    expect(r).not.toContain("ls-ruby-underline");
-    expect(r).toContain("ls-ruby-double");
+    expect(r).not.toContain("ia-underline");
+    expect(r).toContain("ia-ruby-double");
   });
 });
 
@@ -205,22 +205,22 @@ describe("rubyToHTML — pipe-separated special patterns", () => {
 describe("rubyToHTML — bouten", () => {
   it("^^(..) over", () => {
     expect(rubyToHTML("[漢字]^^(..)")).toBe(
-      '<span class="ls-ruby-bouten ls-ruby-bouten-over" style="text-emphasis:filled dot;-webkit-text-emphasis:filled dot;text-emphasis-position:over right;-webkit-text-emphasis-position:over right">漢字</span>'
+      '<span class="ia-bouten ia-bouten-over" style="text-emphasis:filled dot;-webkit-text-emphasis:filled dot;text-emphasis-position:over right;-webkit-text-emphasis-position:over right">漢字</span>'
     );
   });
   it("^_(..) under", () => {
     expect(rubyToHTML("[漢字]^_(..)")).toBe(
-      '<span class="ls-ruby-bouten ls-ruby-bouten-under" style="text-decoration:underline dotted;text-underline-offset:0.15em">漢字</span>'
+      '<span class="ia-bouten ia-bouten-under" style="text-decoration:underline dotted;text-underline-offset:0.15em">漢字</span>'
     );
   });
   it("^^(..)^_(..) both → single span with over+under classes", () => {
     expect(rubyToHTML("[漢字]^^(..)^_(..)")).toBe(
-      '<span class="ls-ruby-bouten ls-ruby-bouten-over ls-ruby-bouten-under" style="text-emphasis:filled dot;-webkit-text-emphasis:filled dot;text-emphasis-position:over right;-webkit-text-emphasis-position:over right;text-decoration:underline dotted;text-underline-offset:0.15em">漢字</span>'
+      '<span class="ia-bouten ia-bouten-over ia-bouten-under" style="text-emphasis:filled dot;-webkit-text-emphasis:filled dot;text-emphasis-position:over right;-webkit-text-emphasis-position:over right;text-decoration:underline dotted;text-underline-offset:0.15em">漢字</span>'
     );
   });
   it("^_(..)^^(..) reverse → same result", () => {
     expect(rubyToHTML("[漢字]^_(..)^^(..)")).toBe(
-      '<span class="ls-ruby-bouten ls-ruby-bouten-over ls-ruby-bouten-under" style="text-emphasis:filled dot;-webkit-text-emphasis:filled dot;text-emphasis-position:over right;-webkit-text-emphasis-position:over right;text-decoration:underline dotted;text-underline-offset:0.15em">漢字</span>'
+      '<span class="ia-bouten ia-bouten-over ia-bouten-under" style="text-emphasis:filled dot;-webkit-text-emphasis:filled dot;text-emphasis-position:over right;-webkit-text-emphasis-position:over right;text-decoration:underline dotted;text-underline-offset:0.15em">漢字</span>'
     );
   });
   it("single dot NOT bouten", () => {
@@ -228,13 +228,13 @@ describe("rubyToHTML — bouten", () => {
   });
   it("single dot in chain", () => {
     const r = rubyToHTML("[aa]^^(bb)^_(.)");
-    expect(r).not.toContain("ls-ruby-bouten");
+    expect(r).not.toContain("ia-bouten");
     expect(r).toContain("<ruby");
-    expect(r).toContain("ls-ruby-double");
+    expect(r).toContain("ia-ruby-double");
   });
   it("single dot standalone", () => {
     const r = rubyToHTML("[aa]^_(.)");
-    expect(r).not.toContain("ls-ruby-bouten");
+    expect(r).not.toContain("ia-bouten");
     expect(r).toContain("<ruby");
   });
 });
@@ -245,7 +245,7 @@ describe("rubyToHTML — bouten", () => {
 describe("rubyToHTML — underline", () => {
   it("[base]^_(.-)", () => {
     expect(rubyToHTML("[base]^_(.-)" )).toBe(
-      '<span class="ls-ruby-underline" style="text-decoration-line:underline;text-underline-offset:0.15em">base</span>'
+      '<span class="ia-underline" style="text-decoration-line:underline;text-underline-offset:0.15em">base</span>'
     );
   });
   it("only ^_ operator", () => {
@@ -253,22 +253,22 @@ describe("rubyToHTML — underline", () => {
   });
   it("bouten + underline chain ^^(..)^_(.-)", () => {
     const r = rubyToHTML("[漢字]^^(..)^_(.-)" );
-    expect(r).toContain("ls-ruby-bouten");
-    expect(r).toContain("ls-ruby-underline");
+    expect(r).toContain("ia-bouten");
+    expect(r).toContain("ia-underline");
   });
   it("reverse chain underline + bouten ^_(.-)^^(..)", () => {
     const r = rubyToHTML("[漢字]^_(.-)^^(..)");
-    expect(r).toContain("ls-ruby-bouten");
-    expect(r).toContain("ls-ruby-underline");
+    expect(r).toContain("ia-bouten");
+    expect(r).toContain("ia-underline");
   });
   it("wavy underline ^_(.~)", () => {
     expect(rubyToHTML("[base]^_(.~)")).toBe(
-      '<span class="ls-ruby-underline ls-ruby-underline-wavy" style="text-decoration-line:underline;text-underline-offset:0.15em;text-decoration-style:wavy">base</span>'
+      '<span class="ia-underline ia-underline-wavy" style="text-decoration-line:underline;text-underline-offset:0.15em;text-decoration-style:wavy">base</span>'
     );
   });
   it("double underline ^_(.=)", () => {
     expect(rubyToHTML("[base]^_(.=)")).toBe(
-      '<span class="ls-ruby-underline ls-ruby-underline-double" style="text-decoration-line:underline;text-underline-offset:0.15em;text-decoration-style:double">base</span>'
+      '<span class="ia-underline ia-underline-double" style="text-decoration-line:underline;text-underline-offset:0.15em;text-decoration-style:double">base</span>'
     );
   });
   it(".~ only with ^_ operator", () => {
@@ -278,30 +278,30 @@ describe("rubyToHTML — underline", () => {
   });
   it("wavy: bouten + wavy chain ^^(..)^_(.~)", () => {
     const r = rubyToHTML("[漢字]^^(..)^_(.~)");
-    expect(r).toContain("ls-ruby-bouten");
-    expect(r).toContain("ls-ruby-underline");
-    expect(r).toContain("ls-ruby-underline-wavy");
+    expect(r).toContain("ia-bouten");
+    expect(r).toContain("ia-underline");
+    expect(r).toContain("ia-underline-wavy");
   });
   it("wavy: ruby + wavy via chain ^^(a)^_(.~)", () => {
     const r = rubyToHTML("[漢字]^^(a)^_(.~)");
     expect(r).toContain("<ruby");
-    expect(r).toContain("ls-ruby-mixed");
-    expect(r).toContain("ls-ruby-underline");
-    expect(r).toContain("ls-ruby-underline-wavy");
+    expect(r).toContain("ia-ruby-mixed");
+    expect(r).toContain("ia-underline");
+    expect(r).toContain("ia-underline-wavy");
     expect(r).toContain("<rt>a</rt>");
   });
   it("wavy: ruby + wavy via pipe ^^(text|.~)", () => {
     const r = rubyToHTML("[漢字]^^(かんじ|.~)");
     expect(r).toContain("<ruby");
-    expect(r).toContain("ls-ruby-mixed");
-    expect(r).toContain("ls-ruby-underline-wavy");
+    expect(r).toContain("ia-ruby-mixed");
+    expect(r).toContain("ia-underline-wavy");
     expect(r).toContain("<rt>かんじ</rt>");
   });
   it("double: ruby + double via pipe ^^(text|.=)", () => {
     const r = rubyToHTML("[漢字]^^(かんじ|.=)");
     expect(r).toContain("<ruby");
-    expect(r).toContain("ls-ruby-mixed");
-    expect(r).toContain("ls-ruby-underline-double");
+    expect(r).toContain("ia-ruby-mixed");
+    expect(r).toContain("ia-underline-double");
     expect(r).toContain("<rt>かんじ</rt>");
   });
 });
@@ -373,7 +373,7 @@ describe("rubyToHTML — abbreviated form boundary", () => {
     // Multi-pass then processes the outer [...]^_(Vocaloid) bracket.
     const r = rubyToHTML("[初音ミク^^(偉大なる|世界一姫様)]^_(Vocaloid)");
     // 偉大なる should be over (operator was ^^)
-    expect(r).toContain("ls-ruby-over");
+    expect(r).toContain("ia-ruby-over");
     expect(r).toContain("<rt>偉大なる</rt>");
     expect(r).toContain("<rt>世界一姫様</rt>");
     expect(r).toContain("<rt>Vocaloid</rt>");
@@ -405,19 +405,19 @@ describe("renderMacroRuby", () => {
     expect(renderMacroRuby([":ruby", "漢字", "かんじ"])).toContain("<ruby");
   });
   it("under", () => {
-    expect(renderMacroRuby([":ruby", "b", "a", "under"])).toContain("ls-ruby-under");
+    expect(renderMacroRuby([":ruby", "b", "a", "under"])).toContain("ia-ruby-under");
   });
   it("bouten", () => {
-    expect(renderMacroRuby([":ruby", "漢字", ".."])).toContain("ls-ruby-bouten");
+    expect(renderMacroRuby([":ruby", "漢字", ".."])).toContain("ia-bouten");
   });
   it("underline", () => {
-    expect(renderMacroRuby([":ruby", "b", ".-", "under"])).toContain("ls-ruby-underline");
+    expect(renderMacroRuby([":ruby", "b", ".-", "under"])).toContain("ia-underline");
   });
   it("wavy underline", () => {
-    expect(renderMacroRuby([":ruby", "b", ".~", "under"])).toContain("ls-ruby-underline-wavy");
+    expect(renderMacroRuby([":ruby", "b", ".~", "under"])).toContain("ia-underline-wavy");
   });
   it("double underline", () => {
-    expect(renderMacroRuby([":ruby", "b", ".=", "under"])).toContain("ls-ruby-underline-double");
+    expect(renderMacroRuby([":ruby", "b", ".=", "under"])).toContain("ia-underline-double");
   });
   it("null for missing args", () => {
     expect(renderMacroRuby([":ruby"])).toBeNull();
@@ -435,46 +435,46 @@ describe("anyToMarkup", () => {
     expect(anyToMarkup("{{renderer :ruby, base, ann, under}}")).toBe("[base]^_(ann)");
   });
   it("HTML → markup", () => {
-    expect(anyToMarkup('<ruby class="ls-ruby ls-ruby-over">漢字<rp>(</rp><rt>かんじ</rt><rp>)</rp></ruby>')).toBe(
+    expect(anyToMarkup('<ruby class="ia-ruby ia-ruby-over">漢字<rp>(</rp><rt>かんじ</rt><rp>)</rp></ruby>')).toBe(
       "[漢字]^^(かんじ)"
     );
   });
   it("HTML under → markup preserves position", () => {
-    expect(anyToMarkup('<ruby class="ls-ruby ls-ruby-under">base<rp>(</rp><rt>ann</rt><rp>)</rp></ruby>')).toBe(
+    expect(anyToMarkup('<ruby class="ia-ruby ia-ruby-under">base<rp>(</rp><rt>ann</rt><rp>)</rp></ruby>')).toBe(
       "[base]^_(ann)"
     );
   });
   it("HTML double-level under-first → markup", () => {
-    const html = '<ruby class="ls-ruby ls-ruby-over ls-ruby-double"><ruby class="ls-ruby ls-ruby-under">base<rp>(</rp><rt>x</rt><rp>)</rp></ruby><rp>(</rp><rt>y</rt><rp>)</rp></ruby>';
+    const html = '<ruby class="ia-ruby ia-ruby-over ia-ruby-double"><ruby class="ia-ruby ia-ruby-under">base<rp>(</rp><rt>x</rt><rp>)</rp></ruby><rp>(</rp><rt>y</rt><rp>)</rp></ruby>';
     expect(anyToMarkup(html)).toBe("[base]^_(x|y)");
   });
   it("HTML mixed ruby over + bouten under → markup", () => {
-    expect(anyToMarkup('<ruby class="ls-ruby ls-ruby-mixed ls-ruby-over ls-ruby-bouten-under">漢字<rp>(</rp><rt>かんじ</rt><rp>)</rp></ruby>')).toBe(
+    expect(anyToMarkup('<ruby class="ia-ruby ia-ruby-mixed ia-ruby-over ia-bouten-under">漢字<rp>(</rp><rt>かんじ</rt><rp>)</rp></ruby>')).toBe(
       "[漢字]^^(かんじ)^_(..)"
     );
   });
   it("HTML mixed ruby under + bouten over → markup", () => {
-    expect(anyToMarkup('<ruby class="ls-ruby ls-ruby-mixed ls-ruby-under ls-ruby-bouten-over">漢字<rp>(</rp><rt>かんじ</rt><rp>)</rp></ruby>')).toBe(
+    expect(anyToMarkup('<ruby class="ia-ruby ia-ruby-mixed ia-ruby-under ia-bouten-over">漢字<rp>(</rp><rt>かんじ</rt><rp>)</rp></ruby>')).toBe(
       "[漢字]^_(かんじ)^^(..)"
     );
   });
   it("HTML mixed ruby over + underline → markup", () => {
-    expect(anyToMarkup('<ruby class="ls-ruby ls-ruby-mixed ls-ruby-over ls-ruby-underline">漢字<rp>(</rp><rt>かんじ</rt><rp>)</rp></ruby>')).toBe(
+    expect(anyToMarkup('<ruby class="ia-ruby ia-ruby-mixed ia-ruby-over ia-underline">漢字<rp>(</rp><rt>かんじ</rt><rp>)</rp></ruby>')).toBe(
       "[漢字]^^(かんじ)^_(.-)"
     );
   });
   it("HTML mixed ruby over + wavy underline → markup", () => {
-    expect(anyToMarkup('<ruby class="ls-ruby ls-ruby-mixed ls-ruby-over ls-ruby-underline ls-ruby-underline-wavy">漢字<rp>(</rp><rt>かんじ</rt><rp>)</rp></ruby>')).toBe(
+    expect(anyToMarkup('<ruby class="ia-ruby ia-ruby-mixed ia-ruby-over ia-underline ia-underline-wavy">漢字<rp>(</rp><rt>かんじ</rt><rp>)</rp></ruby>')).toBe(
       "[漢字]^^(かんじ)^_(.~)"
     );
   });
   it("HTML bouten + underline → markup", () => {
-    expect(anyToMarkup('<span class="ls-ruby-bouten ls-ruby-bouten-over ls-ruby-underline">漢字</span>')).toBe(
+    expect(anyToMarkup('<span class="ia-bouten ia-bouten-over ia-underline">漢字</span>')).toBe(
       "[漢字]^^(..)^_(.-)"
     );
   });
   it("HTML reverse bouten + underline → markup", () => {
-    expect(anyToMarkup('<span class="ls-ruby-bouten ls-ruby-bouten-under ls-ruby-underline">漢字</span>')).toBe(
+    expect(anyToMarkup('<span class="ia-bouten ia-bouten-under ia-underline">漢字</span>')).toBe(
       "[漢字]^_(.-)^^(..)"
     );
   });
@@ -523,7 +523,7 @@ describe("code protection", () => {
     expect(anyToMarkup(input)).toContain("`{{renderer :ruby, a, b}}`");
   });
   it("code preserved when mixed with HTML ruby (Issue 1)", () => {
-    const input = '`cat^_(/kæt/)` <ruby class="ls-ruby ls-ruby-under">cat<rp>(</rp><rt>/kæt/</rt><rp>)</rp></ruby>';
+    const input = '`cat^_(/kæt/)` <ruby class="ia-ruby ia-ruby-under">cat<rp>(</rp><rt>/kæt/</rt><rp>)</rp></ruby>';
     const result = anyToMarkup(input);
     expect(result).toContain("`cat^_(/kæt/)`");
     expect(result).toContain("[cat]^_(/kæt/)");
@@ -575,7 +575,7 @@ describe("auto-hide wrapping", () => {
   it("hidden chars wrapped in empty-rt ruby (Issue 5)", () => {
     const r = rubyToHTML("[振り仮名]^^(ふ り が な)");
     // り should be wrapped in ruby with empty rt, not bare text
-    expect(r).toContain('<ruby class="ls-ruby ls-ruby-over">り<rp>(</rp><rt></rt><rp>)</rp></ruby>');
+    expect(r).toContain('<ruby class="ia-ruby ia-ruby-over">り<rp>(</rp><rt></rt><rp>)</rp></ruby>');
     expect(r).toContain("<rt>ふ</rt>");
     expect(r).toContain("<rt>が</rt>");
     expect(r).toContain("<rt>な</rt>");
@@ -606,7 +606,7 @@ describe("real-world examples", () => {
   it("only second level can per-character align", () => {
     // First level has no spaces (group), second level has spaces matching chars
     const r = rubyToHTML("[李太白]^^(りたいはく|Lǐ Tài Bái)");
-    expect(r).toContain("ls-ruby-double");
+    expect(r).toContain("ia-ruby-double");
     // First level: group annotation
     expect(r).toContain("<rt>りたいはく</rt>");
     // Second level: per-character aligned
@@ -626,7 +626,7 @@ describe("real-world examples", () => {
     expect(r).toContain("<rt>Lǐ</rt>");
     expect(r).toContain("<rt>Tài</rt>");
     expect(r).toContain("<rt>Bái</rt>");
-    expect(r).toContain("ls-ruby-double");
+    expect(r).toContain("ia-ruby-double");
   });
   
   it("space-delimited single level", () => {
@@ -637,7 +637,7 @@ describe("real-world examples", () => {
     expect(r).toContain("<rt>あき</rt>");
     expect(r).toContain("<rt>ふゆ</rt>");
     // No double-sided class
-    expect(r).not.toContain("ls-ruby-double");
+    expect(r).not.toContain("ia-ruby-double");
   });
   
   it("space-delimited count mismatch falls back to group ruby", () => {
@@ -666,7 +666,7 @@ describe("real-world examples", () => {
     expect(r).toContain("<rt>まも</rt>");
     // Outer ruby: wraps 護れ with プロテゴ under
     expect(r).toContain("<rt>プロテゴ</rt>");
-    expect(r).toContain("ls-ruby-under");
+    expect(r).toContain("ia-ruby-under");
     expect(r).toContain("護");
     expect(r).toContain("れ");
   });
