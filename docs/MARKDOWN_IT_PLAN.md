@@ -89,6 +89,7 @@ Adapters translate host capabilities into the spec model:
 
 - markdown-it: real inline tokenizer before `text`
 - Logseq: DOM rendering plus slash-command conversion workflows
+- VS Code: preview-only markdown-it extension through `extendMarkdownIt`
 - Obsidian: reading-view postprocessor first, editor support later
 - remark/unified: micromark/mdast integration only when there is a concrete
   consuming pipeline
@@ -111,6 +112,13 @@ The core cannot fix that. The Logseq adapter should instead provide:
 
 This policy should also apply to future hosts. If a host has a parser conflict,
 the adapter documents it and offers the least surprising workaround.
+
+VS Code is the opposite end of the adapter spectrum. Its built-in Markdown
+preview exposes a markdown-it hook, so the first adapter should be a thin shell
+around the existing markdown-it plugin. Do not add preview scripts, custom
+webviews, editor decorations, hover, completion, or diagnostics until the
+preview-only package has proven real demand. Those features would move the work
+from "syntax preview adapter" into "full editor extension".
 
 ## Testing Strategy
 
@@ -286,7 +294,8 @@ Scope:
 
 ## Phase 3: Obsidian Adapter
 
-Status: **planned after Logseq stabilization and demo**.
+Status: **planned after Logseq stabilization, demo, and VS Code preview
+adapter**.
 
 First version:
 
@@ -306,6 +315,44 @@ Later:
 Non-goal for v1:
 
 - do not promise editor-mode parity with reading view
+
+## Phase 3A: VS Code Preview Adapter
+
+Status: **started**.
+
+Why this comes before Obsidian:
+
+- VS Code's Markdown preview can consume a markdown-it plugin directly.
+- It tests whether Inline Annotation can travel as a normal Markdown extension
+  without DOM postprocessing.
+- It gives the spec a developer-facing surface with less host-specific behavior
+  than Obsidian or Logseq.
+
+First version:
+
+- contribute only `markdown.markdownItPlugins`
+- return `md.use(markdownItInlineAnnotation)` from `extendMarkdownIt`
+- no `markdown.previewScripts`
+- no custom webview
+- no editor-side behavior
+- run the shared HTML fixture corpus through VS Code's adapter entrypoint
+
+CI expectation:
+
+- one package-level CI is enough for preview-only v1 if it covers TypeScript
+  build, manifest checks, shared fixture rendering, package contents, and
+  markdown-it/core release checks
+- add VS Code extension-host smoke tests only when we add UI/editor behavior or
+  preview resources
+- keep manual app testing as a release checklist until the adapter has behavior
+  that cannot be tested through markdown-it alone
+
+Safety policy:
+
+- no scripts in the preview
+- no network resources
+- keep user-authored text escaped in the core renderer
+- do not broaden VS Code preview security assumptions
 
 ## Phase 4: Shared Core Package
 
