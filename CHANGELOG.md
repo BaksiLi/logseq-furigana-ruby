@@ -4,6 +4,17 @@ All notable changes to this project are documented here. The format is based on
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and this project adheres
 to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.5.1]
+
+### Fixed
+
+- Aligned parser with the shared host-neutral fixture corpus from
+  [`markdown-it-inline-annotation`](https://github.com/BaksiLi/markdown-it-inline-annotation) 0.1.1:
+  - Nested over-ruby inside an under-ruby now correctly sets `ruby-position:over`
+    on the inner slot so both annotations render in the right position
+    (e.g. `[[護]^^(まも)れ]^_(プロテゴ)`, `[李太白]^^(Lǐ Tài Bái|ㄌㄧˇ ㄊㄞˋ ㄅㄞˊ)`).
+  - Expanded test coverage against the shared conformance corpus.
+
 ## [0.5.0]
 
 ### Changed
