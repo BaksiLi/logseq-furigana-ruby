@@ -19,21 +19,42 @@ describe("hasRuby", () => {
 describe("shared spec fixture corpus", () => {
   it("is well formed", () => {
     expect(htmlRenderFixtureCorpus.version).toBe(1);
+    expect(Object.keys(htmlRenderFixtureCorpus.fixtureTypes).sort()).toEqual([
+      "host-skip",
+      "rendering-policy",
+      "semantic",
+    ]);
+    expect(htmlRenderFixtureCorpus.fixtureSchema.commonRequired).toEqual([
+      "id",
+      "category",
+      "name",
+      "assertionType",
+      "input",
+    ]);
     expect(Array.isArray(htmlRenderFixtureCorpus.cases)).toBe(true);
 
     const ids = new Set<string>();
     for (const fixture of htmlRenderFixtureCorpus.cases) {
-      expect(fixture.id).toBeTruthy();
+      for (const field of htmlRenderFixtureCorpus.fixtureSchema.commonRequired) {
+        expect(fixture[field as keyof typeof fixture]).toBeTruthy();
+      }
       expect(ids.has(fixture.id)).toBe(false);
       ids.add(fixture.id);
-      expect(fixture.category).toBeTruthy();
-      expect(fixture.name).toBeTruthy();
+      const typeSchema = htmlRenderFixtureCorpus.fixtureSchema.byAssertionType[fixture.assertionType];
+      for (const field of typeSchema.required) {
+        expect(fixture[field as keyof typeof fixture]).toBeTruthy();
+      }
+      for (const field of typeSchema.forbidden) {
+        expect(fixture[field as keyof typeof fixture]).toBeUndefined();
+      }
       expect(typeof fixture.input).toBe("string");
-      expect(
-        fixture.contains.length > 0 ||
-          (fixture.notContains?.length ?? 0) > 0 ||
-          (fixture.counts?.length ?? 0) > 0
-      ).toBe(true);
+      if (fixture.assertionType !== "host-skip") {
+        expect(
+          (fixture.contains?.length ?? 0) > 0 ||
+            (fixture.notContains?.length ?? 0) > 0 ||
+            (fixture.counts?.length ?? 0) > 0
+        ).toBe(true);
+      }
       for (const count of fixture.counts ?? []) {
         expect(count.pattern).toBeTruthy();
         expect(Number.isInteger(count.count)).toBe(true);
@@ -47,7 +68,7 @@ describe("shared spec fixtures — HTML rendering", () => {
   for (const fixture of htmlRenderFixtures) {
     it(`${fixture.id}: ${fixture.name}`, () => {
       const html = rubyToHTML(fixture.input);
-      for (const expected of fixture.contains) {
+      for (const expected of fixture.contains ?? []) {
         expect(html).toContain(expected);
       }
       for (const excluded of fixture.notContains ?? []) {

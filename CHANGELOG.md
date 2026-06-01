@@ -15,6 +15,8 @@ to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
     overflow visible instead of silently consuming it.
 - Refreshed the vendored shared HTML fixture corpus from
   `markdown-it-inline-annotation` 0.2.0.
+- Refreshed the vendored corpus again to include the 0.3.1 fixture taxonomy and
+  schema metadata.
 
 ## [0.5.1]
 

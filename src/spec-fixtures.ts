@@ -9,8 +9,13 @@ export interface HtmlRenderFixture {
   id: string;
   category: string;
   name: string;
+  assertionType: "semantic" | "rendering-policy" | "host-skip";
   input: string;
-  contains: string[];
+  options?: {
+    spaceAlignment?: "always" | "auto" | "off";
+  };
+  hostSkip?: string[];
+  contains?: string[];
   notContains?: string[];
   counts?: HtmlRenderFixtureCount[];
 }
@@ -18,6 +23,11 @@ export interface HtmlRenderFixture {
 export interface HtmlRenderFixtureCorpus {
   version: number;
   description: string;
+  fixtureTypes: Record<HtmlRenderFixture["assertionType"], string>;
+  fixtureSchema: {
+    commonRequired: string[];
+    byAssertionType: Record<HtmlRenderFixture["assertionType"], { required: string[]; forbidden: string[] }>;
+  };
   cases: HtmlRenderFixture[];
 }
 
