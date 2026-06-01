@@ -8,7 +8,7 @@
  * - **Chained**: `[base]^^(over)^_(under)` — mixed-operator only
  * - **Bouten**: `[漢字]^^(..)` / `[漢字]^_(..)` — emphasis dots
  * - **Both bouten**: `[漢字]^^(..)^_(..)` — dots above + below (ruby + text-emphasis)
- * - **Underline**: `[base]^_(.-)` / `^_(.~)` / `^_(.=)` — solid/wavy/double underline
+ * - **Line marks**: `[base]^^(.-)` / `[base]^_(.-)` — overline/underline
  * - **Escapes**: `\|`, `\)`, `\]`, `\\` inside base/annotation
  *
  * Reference: https://blog.baksili.codes/markdown-ruby
@@ -24,7 +24,7 @@ const OP_REGEX = /\^(?:\^|_)\(/g;
 const BOUTEN_PATTERN = "..";
 const ABBREVIATED_BOUNDARY_CHARS = "[]<>`*&!";
 const GENERATED_ANNOTATION_HTML_RE =
-  /<(?:ruby|span)\b[^>]*\bclass=(?:"[^"]*\bia-(?:ruby|bouten|underline)\b[^"]*"|'[^']*\bia-(?:ruby|bouten|underline)\b[^']*')/i;
+  /<(?:ruby|span)\b[^>]*\bclass=(?:"[^"]*\bia-(?:ruby|bouten|underline|overline)\b[^"]*"|'[^']*\bia-(?:ruby|bouten|underline|overline)\b[^']*')/i;
 
 type UnderlineStyle = "solid" | "wavy" | "double";
 
@@ -43,10 +43,35 @@ function underlineClasses(style: UnderlineStyle): string {
   return `ia-underline ia-underline-${style}`;
 }
 
+function lineKeyword(op: RubyOp): "overline" | "underline" {
+  return op === "^^" ? "overline" : "underline";
+}
+
+function lineClasses(op: RubyOp, style: UnderlineStyle): string {
+  const keyword = lineKeyword(op);
+  if (style === "solid") return `ia-${keyword}`;
+  return `ia-${keyword} ia-${keyword}-${style}`;
+}
+
 function underlinePatternFromClasses(el: Element): string | null {
   if (el.classList.contains("ia-underline-wavy")) return ".~";
   if (el.classList.contains("ia-underline-double")) return ".=";
   if (el.classList.contains("ia-underline")) return ".-";
+  return null;
+}
+
+function overlinePatternFromClasses(el: Element): string | null {
+  if (el.classList.contains("ia-overline-wavy")) return ".~";
+  if (el.classList.contains("ia-overline-double")) return ".=";
+  if (el.classList.contains("ia-overline")) return ".-";
+  return null;
+}
+
+function linePatternFromClasses(el: Element): { op: RubyOp; pattern: string } | null {
+  const over = overlinePatternFromClasses(el);
+  if (over) return { op: "^^", pattern: over };
+  const under = underlinePatternFromClasses(el);
+  if (under) return { op: "^_", pattern: under };
   return null;
 }
 
@@ -130,6 +155,17 @@ function splitByUnescapedPipe(input: string): string[] {
   return out;
 }
 
+function overflowAfterSecondUnescapedPipe(input: string): string {
+  let pipes = 0;
+  for (let i = 0; i < input.length; i++) {
+    if (input[i] === "|" && !isEscaped(input, i)) {
+      pipes++;
+      if (pipes === 2) return input.slice(i);
+    }
+  }
+  return "";
+}
+
 function findCloseParen(input: string, start: number): number {
   for (let i = start; i < input.length; i++) {
     if (input[i] === "\n" || input[i] === "\r") return -1;
@@ -172,6 +208,24 @@ function underlineInlineStyle(style: UnderlineStyle): string {
   return s;
 }
 
+function lineInlineStyle(op: RubyOp, style: UnderlineStyle): string {
+  if (op === "^_") return underlineInlineStyle(style);
+  let s = "text-decoration-line:overline";
+  if (style === "wavy") s += ";text-decoration-style:wavy";
+  else if (style === "double") s += ";text-decoration-style:double";
+  return s;
+}
+
+function combinedLineInlineStyle(styles: Array<{ op: RubyOp; style: UnderlineStyle }>): string {
+  const ordered = [...styles].sort((a, b) => (a.op === b.op ? 0 : a.op === "^^" ? -1 : 1));
+  const lines = ordered.map((item) => lineKeyword(item.op)).join(" ");
+  let css = `text-decoration-line:${lines}`;
+  if (ordered.some((item) => item.op === "^_")) css += ";text-underline-offset:0.15em";
+  const styled = ordered.find((item) => item.style !== "solid");
+  if (styled) css += `;text-decoration-style:${styled.style}`;
+  return css;
+}
+
 function boutenInlineStyle(op: RubyOp): string {
   return op === "^^" ? STYLE_BOUTEN_OVER : STYLE_BOUTEN_UNDER;
 }
@@ -207,8 +261,13 @@ function renderBoutenBoth(base: string, allowRenderedBaseHtml = false): string {
   return `<span class="ia-bouten ia-bouten-over ia-bouten-under" style="${STYLE_BOUTEN_OVER};${STYLE_BOUTEN_UNDER}">${escapedBaseHtml(base, allowRenderedBaseHtml)}</span>`;
 }
 
-function renderUnderline(base: string, style: UnderlineStyle = "solid", allowRenderedBaseHtml = false): string {
-  return `<span class="${underlineClasses(style)}" style="${underlineInlineStyle(style)}">${escapedBaseHtml(base, allowRenderedBaseHtml)}</span>`;
+function renderLine(base: string, op: RubyOp, style: UnderlineStyle = "solid", allowRenderedBaseHtml = false): string {
+  return `<span class="${lineClasses(op, style)}" style="${lineInlineStyle(op, style)}">${escapedBaseHtml(base, allowRenderedBaseHtml)}</span>`;
+}
+
+function renderLineBoth(base: string, first: { op: RubyOp; style: UnderlineStyle }, second: { op: RubyOp; style: UnderlineStyle }, allowRenderedBaseHtml = false): string {
+  const classes = [lineClasses(first.op, first.style), lineClasses(second.op, second.style)].join(" ");
+  return `<span class="${classes}" style="${combinedLineInlineStyle([first, second])}">${escapedBaseHtml(base, allowRenderedBaseHtml)}</span>`;
 }
 
 /**
@@ -222,11 +281,11 @@ function renderRubyWithBouten(base: string, rubyText: string, rubyOp: RubyOp, bo
   return `<ruby class="ia-ruby ia-ruby-mixed ${rubyPos} ia-bouten-${boutenPos}" style="${styles}">${safeBase}<rp>(</rp><rt>${escapeHtml(rubyText)}</rt><rp>)</rp></ruby>`;
 }
 
-function renderRubyWithUnderline(base: string, rubyText: string, rubyOp: RubyOp, style: UnderlineStyle = "solid", allowRenderedBaseHtml = false): string {
+function renderRubyWithLine(base: string, rubyText: string, rubyOp: RubyOp, lineOp: RubyOp, style: UnderlineStyle = "solid", allowRenderedBaseHtml = false): string {
   const safeBase = escapedBaseHtml(base, allowRenderedBaseHtml);
   const rubyPos = rubyOp === "^^" ? "ia-ruby-over" : "ia-ruby-under";
-  const styles = [rubyPos === "ia-ruby-under" ? STYLE_RUBY_UNDER : "", underlineInlineStyle(style)].filter(Boolean).join(";");
-  return `<ruby class="ia-ruby ia-ruby-mixed ${rubyPos} ${underlineClasses(style)}" style="${styles}">${safeBase}<rp>(</rp><rt>${escapeHtml(rubyText)}</rt><rp>)</rp></ruby>`;
+  const styles = [rubyPos === "ia-ruby-under" ? STYLE_RUBY_UNDER : "", lineInlineStyle(lineOp, style)].filter(Boolean).join(";");
+  return `<ruby class="ia-ruby ia-ruby-mixed ${rubyPos} ${lineClasses(lineOp, style)}" style="${styles}">${safeBase}<rp>(</rp><rt>${escapeHtml(rubyText)}</rt><rp>)</rp></ruby>`;
 }
 
 /**
@@ -499,41 +558,44 @@ function rubyToHTMLPass(input: string, allowRenderedBaseHtml: boolean): string {
     }
 
     // If first annotation already has pipe-separated levels (filling both positions),
-    // ignore the chained operator — prefer first-come.
+    // leave the chained operator in the stream as visible over-capacity text.
     if (rawAnn2 !== null && splitByUnescapedPipe(rawAnn).length > 1) {
       rawAnn2 = null;
       op2 = null;
-      // Keep finalEnd to consume the chained text silently
+      finalEnd = annEnd + 1;
     }
 
     // --- Special pattern detection ---
     const isBouten1 = rawAnn === BOUTEN_PATTERN;
     const isBouten2 = rawAnn2 === BOUTEN_PATTERN;
-    const ulStyle1 = op === "^_" ? getUnderlineStyle(rawAnn) : null;
-    const ulStyle2 = op2 === "^_" ? getUnderlineStyle(rawAnn2 ?? "") : null;
-    const isUnderline1 = ulStyle1 !== null;
-    const isUnderline2 = ulStyle2 !== null;
-    const isSpecial1 = isBouten1 || isUnderline1;
-    const isSpecial2 = isBouten2 || isUnderline2;
+    const lineStyle1 = getUnderlineStyle(rawAnn);
+    const lineStyle2 = getUnderlineStyle(rawAnn2 ?? "");
+    const isLine1 = lineStyle1 !== null;
+    const isLine2 = lineStyle2 !== null;
+    const isSpecial1 = isBouten1 || isLine1;
+    const isSpecial2 = isBouten2 || isLine2;
 
     // --- Case 1: BOTH are special patterns ---
     if (isSpecial1 && isSpecial2) {
       out += input.slice(consumedFrom, baseStart);
       
-      // Bouten + Underline combination
-      if ((isBouten1 && isUnderline2) || (isUnderline1 && isBouten2)) {
+      // Bouten + line combination
+      if ((isBouten1 && isLine2) || (isLine1 && isBouten2)) {
         const boutenOp = isBouten1 ? op : op2;
-        const ulStyle = isUnderline1 ? ulStyle1! : ulStyle2!;
-        const comboStyle = [boutenInlineStyle(boutenOp!), underlineInlineStyle(ulStyle)].join(";");
-        out += `<span class="ia-bouten ia-bouten-${boutenOp === "^^" ? "over" : "under"} ${underlineClasses(ulStyle)}" style="${comboStyle}">${escapedBaseHtml(baseHtml, allowRenderedBaseHtml)}</span>`;
+        const lineOp = isLine1 ? op : op2!;
+        const lineStyle = isLine1 ? lineStyle1! : lineStyle2!;
+        const comboStyle = [boutenInlineStyle(boutenOp!), lineInlineStyle(lineOp, lineStyle)].join(";");
+        out += `<span class="ia-bouten ia-bouten-${boutenOp === "^^" ? "over" : "under"} ${lineClasses(lineOp, lineStyle)}" style="${comboStyle}">${escapedBaseHtml(baseHtml, allowRenderedBaseHtml)}</span>`;
       }
       // Bouten + Bouten (both dots)
       else if (isBouten1 && isBouten2) {
         out += renderBoutenBoth(baseHtml, allowRenderedBaseHtml);
       }
-      // Underline + Underline (just one underline — prefer first)
+      // Line + line: preserve both sides when they differ.
       else {
-        out += renderUnderline(baseHtml, ulStyle1!, allowRenderedBaseHtml);
+        out += op2 && op2 !== op
+          ? renderLineBoth(baseHtml, { op, style: lineStyle1! }, { op: op2, style: lineStyle2! }, allowRenderedBaseHtml)
+          : renderLine(baseHtml, op, lineStyle1!, allowRenderedBaseHtml);
       }
       
       i = finalEnd;
@@ -547,7 +609,7 @@ function rubyToHTMLPass(input: string, allowRenderedBaseHtml: boolean): string {
       if (isBouten1) {
         out += renderBouten(baseHtml, op, allowRenderedBaseHtml);
       } else {
-        out += renderUnderline(baseHtml, ulStyle1!, allowRenderedBaseHtml);
+        out += renderLine(baseHtml, op, lineStyle1!, allowRenderedBaseHtml);
       }
       
       i = annEnd + 1;
@@ -565,7 +627,7 @@ function rubyToHTMLPass(input: string, allowRenderedBaseHtml: boolean): string {
         if (isBouten1) {
           out += renderRubyWithBouten(baseHtml, rubyText, op2!, op, allowRenderedBaseHtml);
         } else {
-          out += renderRubyWithUnderline(baseHtml, rubyText, op2!, ulStyle1!, allowRenderedBaseHtml);
+          out += renderRubyWithLine(baseHtml, rubyText, op2!, op, lineStyle1!, allowRenderedBaseHtml);
         }
       } else if (!isSpecial1 && isSpecial2) {
         // First is ruby text, second is special (bouten/underline)
@@ -573,7 +635,7 @@ function rubyToHTMLPass(input: string, allowRenderedBaseHtml: boolean): string {
         if (isBouten2) {
           out += renderRubyWithBouten(baseHtml, rubyText, op, op2!, allowRenderedBaseHtml);
         } else {
-          out += renderRubyWithUnderline(baseHtml, rubyText, op, ulStyle2!, allowRenderedBaseHtml);
+          out += renderRubyWithLine(baseHtml, rubyText, op, op2!, lineStyle2!, allowRenderedBaseHtml);
         }
       }
       
@@ -582,7 +644,9 @@ function rubyToHTMLPass(input: string, allowRenderedBaseHtml: boolean): string {
     }
 
     // --- Case 4: Regular ruby (both are normal text) ---
-    const levels = splitByUnescapedPipe(rawAnn).map(unescape);
+    const rawLevels = splitByUnescapedPipe(rawAnn);
+    const levels = rawLevels.map(unescape);
+    const overflowHtml = rawAnn2 ? "" : escapeHtml(unescape(overflowAfterSecondUnescapedPipe(rawAnn)));
     if (rawAnn2) {
       levels.push(...splitByUnescapedPipe(rawAnn2).map(unescape));
     }
@@ -592,14 +656,14 @@ function rubyToHTMLPass(input: string, allowRenderedBaseHtml: boolean): string {
       const innerOp = op;
       const outerOp: RubyOp = op === "^^" ? "^_" : "^^";
 
-      const isInnerBouten = levels[0] === BOUTEN_PATTERN;
-      const isOuterBouten = levels[1] === BOUTEN_PATTERN;
-      const innerUlStyle = innerOp === "^_" ? getUnderlineStyle(levels[0]) : null;
-      const outerUlStyle = outerOp === "^_" ? getUnderlineStyle(levels[1]) : null;
-      const isInnerUnderline = innerUlStyle !== null;
-      const isOuterUnderline = outerUlStyle !== null;
-      const isInnerSpecial = isInnerBouten || isInnerUnderline;
-      const isOuterSpecial = isOuterBouten || isOuterUnderline;
+      const isInnerBouten = rawLevels[0] === BOUTEN_PATTERN;
+      const isOuterBouten = rawLevels[1] === BOUTEN_PATTERN;
+      const innerLineStyle = getUnderlineStyle(rawLevels[0]);
+      const outerLineStyle = getUnderlineStyle(rawLevels[1]);
+      const isInnerLine = innerLineStyle !== null;
+      const isOuterLine = outerLineStyle !== null;
+      const isInnerSpecial = isInnerBouten || isInnerLine;
+      const isOuterSpecial = isOuterBouten || isOuterLine;
 
       if (isInnerSpecial || isOuterSpecial) {
         out += input.slice(consumedFrom, baseStart);
@@ -607,35 +671,37 @@ function rubyToHTMLPass(input: string, allowRenderedBaseHtml: boolean): string {
         if (isInnerSpecial && isOuterSpecial) {
           if (isInnerBouten && isOuterBouten) {
             out += renderBoutenBoth(baseHtml, allowRenderedBaseHtml);
-          } else if ((isInnerBouten || isOuterBouten) && (isInnerUnderline || isOuterUnderline)) {
+          } else if ((isInnerBouten || isOuterBouten) && (isInnerLine || isOuterLine)) {
             const boutenOp = isInnerBouten ? innerOp : outerOp;
-            const pipeUlStyle = isInnerUnderline ? innerUlStyle! : outerUlStyle!;
-            const comboStyle2 = [boutenInlineStyle(boutenOp), underlineInlineStyle(pipeUlStyle)].join(";");
-            out += `<span class="ia-bouten ia-bouten-${boutenOp === "^^" ? "over" : "under"} ${underlineClasses(pipeUlStyle)}" style="${comboStyle2}">${escapedBaseHtml(baseHtml, allowRenderedBaseHtml)}</span>`;
+            const lineOp = isInnerLine ? innerOp : outerOp;
+            const pipeLineStyle = isInnerLine ? innerLineStyle! : outerLineStyle!;
+            const comboStyle2 = [boutenInlineStyle(boutenOp), lineInlineStyle(lineOp, pipeLineStyle)].join(";");
+            out += `<span class="ia-bouten ia-bouten-${boutenOp === "^^" ? "over" : "under"} ${lineClasses(lineOp, pipeLineStyle)}" style="${comboStyle2}">${escapedBaseHtml(baseHtml, allowRenderedBaseHtml)}</span>`;
           } else {
-            out += renderUnderline(baseHtml, innerUlStyle!, allowRenderedBaseHtml);
+            out += renderLineBoth(baseHtml, { op: innerOp, style: innerLineStyle! }, { op: outerOp, style: outerLineStyle! }, allowRenderedBaseHtml);
           }
         } else if (isInnerSpecial) {
           if (isInnerBouten) {
             out += renderRubyWithBouten(baseHtml, levels[1], outerOp, innerOp, allowRenderedBaseHtml);
           } else {
-            out += renderRubyWithUnderline(baseHtml, levels[1], outerOp, innerUlStyle!, allowRenderedBaseHtml);
+            out += renderRubyWithLine(baseHtml, levels[1], outerOp, innerOp, innerLineStyle!, allowRenderedBaseHtml);
           }
         } else {
           if (isOuterBouten) {
             out += renderRubyWithBouten(baseHtml, levels[0], innerOp, outerOp, allowRenderedBaseHtml);
           } else {
-            out += renderRubyWithUnderline(baseHtml, levels[0], innerOp, outerUlStyle!, allowRenderedBaseHtml);
+            out += renderRubyWithLine(baseHtml, levels[0], innerOp, outerOp, outerLineStyle!, allowRenderedBaseHtml);
           }
         }
 
+        out += overflowHtml;
         i = finalEnd;
         continue;
       }
     }
 
     out += input.slice(consumedFrom, baseStart);
-    out += renderRuby(baseHtml, op, levels, allowRenderedBaseHtml);
+    out += renderRuby(baseHtml, op, levels, allowRenderedBaseHtml) + overflowHtml;
     i = finalEnd;
   }
 
@@ -792,6 +858,7 @@ function markupToMacro(input: string): string {
     if (rawAnn2 !== null && splitByUnescapedPipe(rawAnn).length > 1) {
       rawAnn2 = null;
       op2 = null;
+      finalEnd = annEnd + 1;
     }
 
     const base = unescape(baseHtml);
@@ -868,11 +935,11 @@ function htmlElementsToMacro(root: HTMLElement): void {
     const base = (span.textContent ?? "").trim();
     const isOver = span.classList.contains("ia-bouten-over");
     const isUnder = span.classList.contains("ia-bouten-under");
-    const isUnderline = span.classList.contains("ia-underline");
+    const line = linePatternFromClasses(span);
     
     // Note: Macro format doesn't support bouten + underline combo directly,
     // so we convert to the primary effect (bouten)
-    if (isUnderline) {
+    if (line) {
       // For bouten + underline, prioritize the bouten in macro format
       const pos = isUnder ? ", under" : "";
       span.replaceWith(root.ownerDocument.createTextNode(`{{renderer :ruby, ${base}, ..${pos}}}`));
@@ -882,10 +949,11 @@ function htmlElementsToMacro(root: HTMLElement): void {
     }
   }
 
-  for (const span of Array.from(root.querySelectorAll("span.ia-underline:not(.ia-bouten)"))) {
+  for (const span of Array.from(root.querySelectorAll("span.ia-underline:not(.ia-bouten), span.ia-overline:not(.ia-bouten)"))) {
     const base = (span.textContent ?? "").trim();
-    const ulPat = underlinePatternFromClasses(span) ?? ".-";
-    span.replaceWith(root.ownerDocument.createTextNode(`{{renderer :ruby, ${base}, ${ulPat}, under}}`));
+    const line = linePatternFromClasses(span) ?? { op: "^_" as RubyOp, pattern: ".-" };
+    const pos = line.op === "^_" ? ", under" : "";
+    span.replaceWith(root.ownerDocument.createTextNode(`{{renderer :ruby, ${base}, ${line.pattern}${pos}}}`));
   }
 }
 
@@ -940,12 +1008,12 @@ export function rubyHtmlToMarkup(html: string): string {
         const rubyText = rt ? (rt.textContent ?? "").trim() : "";
         if (!base || !rubyText) continue;
         const rubyOp = ruby.classList.contains("ia-ruby-over") ? "^^" : "^_";
-        const ulPat = underlinePatternFromClasses(ruby);
+        const line = linePatternFromClasses(ruby);
         const isBoutenOver = ruby.classList.contains("ia-bouten-over");
         const isBoutenUnder = ruby.classList.contains("ia-bouten-under");
         let decoMarkup = "";
-        if (ulPat) {
-          decoMarkup = `^_(${ulPat})`;
+        if (line) {
+          decoMarkup = `${line.op}(${line.pattern})`;
         } else if (isBoutenOver) {
           decoMarkup = `^^(..)`;
         } else if (isBoutenUnder) {
@@ -998,13 +1066,13 @@ export function rubyHtmlToMarkup(html: string): string {
     if (!base) continue;
     const isOver = span.classList.contains("ia-bouten-over");
     const isUnder = span.classList.contains("ia-bouten-under");
-    const ulPattern = underlinePatternFromClasses(span);
+    const line = linePatternFromClasses(span);
     
     // Bouten + Underline combinations
-    if (ulPattern && isOver) {
-      span.replaceWith(doc.createTextNode(`${formatRubyMarkup(base, "^^", BOUTEN_PATTERN)}^_(${ulPattern})`));
-    } else if (ulPattern && isUnder) {
-      span.replaceWith(doc.createTextNode(`${formatRubyMarkup(base, "^_", ulPattern)}^^(..)`));
+    if (line && isOver) {
+      span.replaceWith(doc.createTextNode(`${formatRubyMarkup(base, "^^", BOUTEN_PATTERN)}${line.op}(${line.pattern})`));
+    } else if (line && isUnder) {
+      span.replaceWith(doc.createTextNode(`${formatRubyMarkup(base, line.op, line.pattern)}^^(..)`));
     } else if (isOver && isUnder) {
       span.replaceWith(doc.createTextNode(`${formatRubyMarkup(base, "^^", BOUTEN_PATTERN)}^_(..)`));
     } else if (isUnder) {
@@ -1014,10 +1082,10 @@ export function rubyHtmlToMarkup(html: string): string {
     }
   }
 
-  for (const span of Array.from(root.querySelectorAll("span.ia-underline:not(.ia-bouten)"))) {
+  for (const span of Array.from(root.querySelectorAll("span.ia-underline:not(.ia-bouten), span.ia-overline:not(.ia-bouten)"))) {
     const base = (span.textContent ?? "").trim();
-    const ulPat = underlinePatternFromClasses(span) ?? ".-";
-    span.replaceWith(doc.createTextNode(formatRubyMarkup(base, "^_", ulPat)));
+    const line = linePatternFromClasses(span) ?? { op: "^_" as RubyOp, pattern: ".-" };
+    span.replaceWith(doc.createTextNode(formatRubyMarkup(base, line.op, line.pattern)));
   }
 
   return root.innerHTML;
@@ -1095,8 +1163,8 @@ export function renderMacroRuby(args: string[]): string | null {
   const op: RubyOp = posArg === "under" ? "^_" : "^^";
 
   if (rawAnn === BOUTEN_PATTERN) return renderBouten(base, op);
-  const macroUlStyle = op === "^_" ? getUnderlineStyle(rawAnn) : null;
-  if (macroUlStyle !== null) return renderUnderline(base, macroUlStyle);
+  const macroLineStyle = getUnderlineStyle(rawAnn);
+  if (macroLineStyle !== null) return renderLine(base, op, macroLineStyle);
 
   const levels = splitByUnescapedPipe(rawAnn).map(unescape);
   return renderRuby(base, op, levels);

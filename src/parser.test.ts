@@ -181,15 +181,13 @@ describe("rubyToHTML — chaining", () => {
     expect(r).toContain("ia-underline");
     expect(r).toContain("ia-bouten-over");
   });
-  it("pipe + chain conflict: pipe wins, chain consumed", () => {
+  it("pipe + chain conflict: pipe wins, chain stays visible", () => {
     const r = rubyToHTML("[李太白]^^(り たい はく|Lǐ Tài Bái)^_(..)");
     expect(r).toContain("ia-ruby-double");
     expect(r).toContain("<rt>り</rt>");
     expect(r).toContain("<rt>Lǐ</rt>");
     expect(r).not.toContain("ia-bouten");
-    // Chained ^_(..) should be consumed, not left as literal text
-    expect(r).not.toContain("^_");
-    expect(r).not.toContain("..");
+    expect(r).toContain("^_(..)");
   });
 });
 
@@ -237,13 +235,12 @@ describe("rubyToHTML — pipe-separated special patterns", () => {
     expect(r).toContain("ia-bouten-over");
     expect(r).toContain("ia-underline");
   });
-  it(".- at over position is NOT underline ^^(.-|text)", () => {
-    // .- only means underline when at the ^_ (under) position
+  it(".- at over position is an overline ^^(.-|text)", () => {
     const r = rubyToHTML("[aa]^^(.-|bb)");
-    expect(r).toContain("<rt>.-</rt>");
     expect(r).toContain("<rt>bb</rt>");
+    expect(r).toContain("ia-overline");
     expect(r).not.toContain("ia-underline");
-    expect(r).toContain("ia-ruby-double");
+    expect(r).toContain("ia-ruby-mixed");
   });
 });
 
@@ -296,8 +293,8 @@ describe("rubyToHTML — underline", () => {
       '<span class="ia-underline" style="text-decoration-line:underline;text-underline-offset:0.15em">base</span>'
     );
   });
-  it("only ^_ operator", () => {
-    expect(rubyToHTML("[base]^^(.-)")).toContain("<ruby");
+  it("over slot renders overline", () => {
+    expect(rubyToHTML("[base]^^(.-)")).toContain("ia-overline");
   });
   it("bouten + underline chain ^^(..)^_(.-)", () => {
     const r = rubyToHTML("[漢字]^^(..)^_(.-)" );
@@ -319,10 +316,9 @@ describe("rubyToHTML — underline", () => {
       '<span class="ia-underline ia-underline-double" style="text-decoration-line:underline;text-underline-offset:0.15em;text-decoration-style:double">base</span>'
     );
   });
-  it(".~ only with ^_ operator", () => {
-    // ^^(.~) should be treated as regular ruby text, not underline
-    expect(rubyToHTML("[base]^^(.~)")).toContain("<ruby");
-    expect(rubyToHTML("[base]^^(.~)")).toContain("<rt>.~</rt>");
+  it(".~ in over slot renders wavy overline", () => {
+    expect(rubyToHTML("[base]^^(.~)")).toContain("ia-overline-wavy");
+    expect(rubyToHTML("[base]^^(.~)")).toContain("text-decoration-style:wavy");
   });
   it("wavy: bouten + wavy chain ^^(..)^_(.~)", () => {
     const r = rubyToHTML("[漢字]^^(..)^_(.~)");
@@ -384,9 +380,11 @@ describe("rubyToHTML — edge cases", () => {
     expect(rubyToHTML("[<strong>漢</strong>]^^(かん)字")).toContain("&lt;strong&gt;漢&lt;/strong&gt;");
     expect(rubyToHTML("[<strong>漢</strong>]^^(かん)字")).toContain("<rt>かん</rt>");
   });
-  it("3 levels (pipe + chain) caps at 2", () => {
+  it("3 levels (pipe + chain) leaves overflow visible", () => {
     const r = rubyToHTML("[北京]^^(ペキン|Beijing)^_(Pekin)");
-    expect(r).not.toContain("Pekin");
+    expect(r).toContain("<rt>ペキン</rt>");
+    expect(r).toContain("<rt>Beijing</rt>");
+    expect(r).toContain("^_(Pekin)");
   });
 });
 

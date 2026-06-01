@@ -4,6 +4,18 @@ All notable changes to this project are documented here. The format is based on
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and this project adheres
 to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.6.0]
+
+### Changed
+
+- Aligned the independent Logseq parser with Inline Annotation v2:
+  - `.-`, `.~`, and `.=` are now symmetric line marks. In the over slot they
+    render as overlines; in the under slot they render as underlines.
+  - Pipe-saturated input such as `[a]^^(x|y)^_(z)` now leaves the chained
+    overflow visible instead of silently consuming it.
+- Refreshed the vendored shared HTML fixture corpus from
+  `markdown-it-inline-annotation` 0.2.0.
+
 ## [0.5.1]
 
 ### Fixed

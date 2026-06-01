@@ -1,6 +1,6 @@
 # logseq-furigana-ruby
 
-Logseq plugin for **Inline Annotation** — ruby/furigana, bouten, and underline marks using the `^^()`/`^_()` syntax.
+Logseq plugin for **Inline Annotation** — ruby/furigana, bouten, overline, and underline marks using the `^^()`/`^_()` syntax.
 
 This plugin is the reference implementation of the Inline Annotation syntax. The portable grammar and HTML class contract are defined in the shared spec, and a markdown-it port is available:
 
@@ -42,11 +42,13 @@ N.B. `base^^(ruby)` - `[]` can be omitted.
 - `[[護]^^(まも)れ]^_(プロテゴ)` — inner ruby + outer annotation on a larger span
     > <ruby class="ia-ruby ia-ruby-under" style="ruby-position:under"><ruby class="ia-ruby ia-ruby-over">護<rp>(</rp><rt>まも</rt><rp>)</rp></ruby>れ<rp>(</rp><rt>プロテゴ</rt><rp>)</rp></ruby>
 
-#### Bouten & Underline
+#### Bouten & Line Marks
 - `base^^(..)` — bouten (emphasis dots) above
     > <span class="ia-bouten ia-bouten-over" style="text-emphasis:filled dot;-webkit-text-emphasis:filled dot;text-emphasis-position:over right;-webkit-text-emphasis-position:over right">base</span>
 - `base^_(..)` — dotted underline
     > <span class="ia-bouten ia-bouten-under" style="text-decoration:underline dotted;text-underline-offset:0.15em">base</span>
+- `base^^(.-)` — solid overline
+    > <span class="ia-overline" style="text-decoration-line:overline">base</span>
 - `base^_(.-)` — solid underline
     > <span class="ia-underline" style="text-decoration-line:underline;text-underline-offset:0.15em">base</span>
 - `base^_(.=)` — double underline
@@ -150,7 +152,7 @@ pnpm build    # dist/
 ## Appendix: Operator Properties
 
 `^^` and `^_` are **position-assignment operators** on a 2-slot system (over / under).
-Special patterns (`..`, `.-`, `.~`, `.=`) act as **rendering modifiers** — they change a slot from ruby annotation to CSS decoration (bouten, underline).
+Special patterns (`..`, `.-`, `.~`, `.=`) act as **rendering modifiers** — they change a slot from ruby annotation to CSS decoration (bouten or line marks). The operator chooses the side: over-slot line marks render as overlines, under-slot line marks render as underlines.
 
 **Commutativity** — chain order doesn’t matter; position is determined by the operator:
 - `[a]^^(x)^_(y)` ≡ `[a]^_(y)^^(x)`
@@ -162,8 +164,8 @@ Special patterns (`..`, `.-`, `.~`, `.=`) act as **rendering modifiers** — the
 **Idempotency of position** — same-operator chaining is rejected (each slot claimed once):
 - `[a]^^(x)^^(y)` — NOT chained; two separate expressions
 
-**First-come-takes-place** — when pipe saturates both slots, a chained operator is silently consumed:
-- `[李太白]^^(り たい はく|Lǐ Tài Bái)^_(..)` — `^_(..)` ignored; pipe already fills both
+**Over-capacity stays visible** — when pipe saturates both slots, a chained operator renders through as literal text:
+- `[李太白]^^(り たい はく|Lǐ Tài Bái)^_(..)` — the `^_(..)` remains visible; pipe already fills both slots
 
 **Capacity** — max 2 levels (over + under) per base.
 
