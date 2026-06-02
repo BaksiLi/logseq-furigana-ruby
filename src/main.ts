@@ -57,8 +57,13 @@ async function main() {
       text-decoration-line: underline;
       text-underline-offset: 0.15em;
     }
+    span.ia-overline {
+      text-decoration-line: overline;
+    }
     span.ia-underline.ia-underline-wavy { text-decoration-style: wavy; }
     span.ia-underline.ia-underline-double { text-decoration-style: double; }
+    span.ia-overline.ia-overline-wavy { text-decoration-style: wavy; }
+    span.ia-overline.ia-overline-double { text-decoration-style: double; }
 
     /* Bouten over + underline: text-emphasis dots above + underline */
     span.ia-bouten.ia-bouten-over.ia-underline {
@@ -99,6 +104,8 @@ async function main() {
     /* Underline style variants (apply to both span and ruby contexts) */
     .ia-underline-wavy { text-decoration-style: wavy; }
     .ia-underline-double { text-decoration-style: double; }
+    .ia-overline-wavy { text-decoration-style: wavy; }
+    .ia-overline-double { text-decoration-style: double; }
   `);
 
   // ---------------------------------------------------------------------------

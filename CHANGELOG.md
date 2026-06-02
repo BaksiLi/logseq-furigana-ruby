@@ -4,6 +4,15 @@ All notable changes to this project are documented here. The format is based on
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and this project adheres
 to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.6.1]
+
+### Fixed
+
+- Render chained overline + underline line marks as independent wrappers so each
+  side keeps its own style, matching `markdown-it-inline-annotation` 0.3.2.
+- Add missing class-mode CSS for `ia-overline`, `ia-overline-wavy`, and
+  `ia-overline-double`.
+
 ## [0.6.0]
 
 ### Changed

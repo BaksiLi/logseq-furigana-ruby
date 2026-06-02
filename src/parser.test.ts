@@ -341,6 +341,11 @@ describe("rubyToHTML — underline", () => {
     expect(rubyToHTML("[base]^^(.~)")).toContain("ia-overline-wavy");
     expect(rubyToHTML("[base]^^(.~)")).toContain("text-decoration-style:wavy");
   });
+  it("overline and underline styles remain independent", () => {
+    expect(rubyToHTML("[漢字]^^(.-)^_(.~)")).toBe(
+      '<span class="ia-overline" style="text-decoration-line:overline"><span class="ia-underline ia-underline-wavy" style="text-decoration-line:underline;text-underline-offset:0.15em;text-decoration-style:wavy">漢字</span></span>'
+    );
+  });
   it("wavy: bouten + wavy chain ^^(..)^_(.~)", () => {
     const r = rubyToHTML("[漢字]^^(..)^_(.~)");
     expect(r).toContain("ia-bouten");

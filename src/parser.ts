@@ -216,16 +216,6 @@ function lineInlineStyle(op: RubyOp, style: UnderlineStyle): string {
   return s;
 }
 
-function combinedLineInlineStyle(styles: Array<{ op: RubyOp; style: UnderlineStyle }>): string {
-  const ordered = [...styles].sort((a, b) => (a.op === b.op ? 0 : a.op === "^^" ? -1 : 1));
-  const lines = ordered.map((item) => lineKeyword(item.op)).join(" ");
-  let css = `text-decoration-line:${lines}`;
-  if (ordered.some((item) => item.op === "^_")) css += ";text-underline-offset:0.15em";
-  const styled = ordered.find((item) => item.style !== "solid");
-  if (styled) css += `;text-decoration-style:${styled.style}`;
-  return css;
-}
-
 function boutenInlineStyle(op: RubyOp): string {
   return op === "^^" ? STYLE_BOUTEN_OVER : STYLE_BOUTEN_UNDER;
 }
@@ -266,8 +256,13 @@ function renderLine(base: string, op: RubyOp, style: UnderlineStyle = "solid", a
 }
 
 function renderLineBoth(base: string, first: { op: RubyOp; style: UnderlineStyle }, second: { op: RubyOp; style: UnderlineStyle }, allowRenderedBaseHtml = false): string {
-  const classes = [lineClasses(first.op, first.style), lineClasses(second.op, second.style)].join(" ");
-  return `<span class="${classes}" style="${combinedLineInlineStyle([first, second])}">${escapedBaseHtml(base, allowRenderedBaseHtml)}</span>`;
+  const ordered = [first, second].sort((a, b) => (a.op === b.op ? 0 : a.op === "^^" ? -1 : 1));
+  let html = escapedBaseHtml(base, allowRenderedBaseHtml);
+  for (let i = ordered.length - 1; i >= 0; i--) {
+    const item = ordered[i];
+    html = `<span class="${lineClasses(item.op, item.style)}" style="${lineInlineStyle(item.op, item.style)}">${html}</span>`;
+  }
+  return html;
 }
 
 /**
