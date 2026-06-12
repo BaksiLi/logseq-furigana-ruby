@@ -1,7 +1,7 @@
 {
   "name": "logseq-furigana-ruby",
   "version": "0.6.1",
-  "description": "Logseq plugin that renders [base]^^(annotation) ruby/furigana markup.",
+  "description": "Logseq plugin that renders [base]^^(ruby) Inline Annotation syntax for ruby/furigana and glosses.",
   "main": "dist/index.html",
   "author": "Baksi Li <myself@baksili.codes>",
   "repository": {

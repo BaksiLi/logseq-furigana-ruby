@@ -1,11 +1,13 @@
 # logseq-furigana-ruby
 
-Logseq plugin for **Inline Annotation** — ruby/furigana, bouten, overline, and underline marks using the `^^()`/`^_()` syntax.
+Logseq plugin for **Inline Annotation** — ruby/furigana, bouten, overline, and underline marks using `[base]^^(ruby)` and `[base]^_(under)` syntax.
 
 This plugin is the reference implementation of the Inline Annotation syntax. The portable grammar and HTML class contract are defined in the shared spec, and a markdown-it port is available:
 
 > - **Spec:** [Markdown Inline Annotation Extension](https://github.com/BaksiLi/markdown-it-inline-annotation/blob/main/SPEC.md)
 > - **markdown-it plugin:** [`markdown-it-inline-annotation`](https://github.com/BaksiLi/markdown-it-inline-annotation)
+> - **Obsidian plugin:** [Inline Ruby Annotation](https://community.obsidian.md/plugins/inline-annotation)
+> - **VS Code extension:** [Inline Ruby Annotation](https://marketplace.visualstudio.com/items?itemName=baksili.vscode-inline-annotation)
 > - **Proposal:** [Baksi's Proposal](https://blog.baksili.codes/markdown-ruby)
 
 This plugin emits the canonical `ia-*` HTML class contract, so it shares one stylesheet family with every other Inline Annotation implementation.
