@@ -4,6 +4,16 @@ All notable changes to this project are documented here. The format is based on
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and this project adheres
 to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.6.2]
+
+### Fixed
+
+- Replace the broad `innerHTML` fragmented-markup fallback with transparent-run
+  DOM handling. Formatting, highlight, link, and code boundaries are now
+  preserved instead of being flattened into annotation text.
+- Add the shared segment-boundary fixture corpus while retaining support for
+  adjacent plain nodes and attribute-free spans.
+
 ## [0.6.1]
 
 ### Fixed

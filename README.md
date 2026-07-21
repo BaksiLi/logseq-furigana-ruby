@@ -1,176 +1,97 @@
 # logseq-furigana-ruby
 
-Logseq plugin for **Inline Annotation** — ruby/furigana, bouten, overline, and underline marks using `[base]^^(ruby)` and `[base]^_(under)` syntax.
+Logseq plugin for **Inline Annotation**: ruby/furigana, over/under glosses,
+bouten, overlines, and underlines using `[base]^^(ruby)` and
+`[base]^_(under)`.
 
-This plugin is the reference implementation of the Inline Annotation syntax. The portable grammar and HTML class contract are defined in the shared spec, and a markdown-it port is available:
+![Inline Annotation showcase](./assets/logseq_showcase.png)
 
-> - **Spec:** [Markdown Inline Annotation Extension](https://github.com/BaksiLi/markdown-it-inline-annotation/blob/main/SPEC.md)
-> - **markdown-it plugin:** [`markdown-it-inline-annotation`](https://github.com/BaksiLi/markdown-it-inline-annotation)
-> - **Obsidian plugin:** [Inline Ruby Annotation](https://community.obsidian.md/plugins/inline-annotation)
-> - **VS Code extension:** [Inline Ruby Annotation](https://marketplace.visualstudio.com/items?itemName=baksili.vscode-inline-annotation)
-> - **Proposal:** [Baksi's Proposal](https://blog.baksili.codes/markdown-ruby)
+The portable grammar and `ia-*` HTML class contract live in the
+[Inline Annotation spec](https://github.com/BaksiLi/markdown-it-inline-annotation/blob/main/SPEC.md).
+This plugin keeps an independent parser plus Logseq-specific macros and
+conversion commands.
 
-This plugin emits the canonical `ia-*` HTML class contract, so it shares one stylesheet family with every other Inline Annotation implementation.
+## Syntax
 
-## Basic Syntax
+| Input | Meaning |
+| --- | --- |
+| `[base]^^(ruby)` | ruby or gloss above |
+| `[base]^_(gloss)` | ruby or gloss below |
+| `base^^(ruby)` | abbreviated base |
+| `[北京]^^(ペキン\|Beijing)` | annotation above and below |
+| `[base]^^(over)^_(under)` | chained two-slot annotation |
+| `[[護]^^(まも)れ]^_(プロテゴ)` | nested or overlapping annotation |
+| `[春夏秋冬]^^(はる なつ あき ふゆ)` | per-character reading |
+| `[漢字]^^(..)` | bouten above |
+| `[漢字]^_(..)` | dotted emphasis below |
+| `[base]^^(.-)` | solid overline |
+| `[base]^_(.-)` | solid underline |
+| `[base]^_(.~)` | wavy underline |
+| `[base]^_(.=)` | double underline |
 
-![Showcase](./assets/logseq_showcase.png)
+Escaped `\|`, `\)`, `\[`, and `\]` stay literal when the Logseq parser has not
+already consumed the backslash. See the
+[full showcase](./assets/logseq_inline_annotation.md) for copyable examples.
 
-📖 **[Full showcase](./assets/logseq_inline_annotation.md)** — Example annotations; open in Logseq with the plugin for live rendering.
+## Logseq Macros
 
-### Inline Markup
+Macros avoid conflicts with Logseq's own Markdown parser:
 
-Supports various ruby annotation styles:
-
-#### Basic Ruby
-- `[base]^^(ruby)` – annotation above
-    > <ruby class="ia-ruby ia-ruby-over">base<rp>(</rp><rt>ruby</rt><rp>)</rp></ruby>
-- `[base]^_(ruby)` — annotation below
-    > <ruby class="ia-ruby ia-ruby-under">base<rp>(</rp><rt>ruby</rt><rp>)</rp></ruby>
-- `[北京]^^(ペキン|Beijing)` — annotation two-level (above + below)
-    > <ruby class="ia-ruby ia-ruby-under ia-ruby-double"><ruby class="ia-ruby ia-ruby-over">北京<rp>(</rp><rt>ペキン</rt><rp>)</rp></ruby><rp>(</rp><rt>Beijing</rt><rp>)</rp></ruby>
-
-N.B. `base^^(ruby)` - `[]` can be omitted.
-
-#### Per-Character Ruby (rendering)
-- `[春夏秋冬]^^(はる なつ あき ふゆ)` — auto-aligns each character with its annotation
-    > <ruby class="ia-ruby ia-ruby-over">春<rp>(</rp><rt>はる</rt><rp>)</rp></ruby><ruby class="ia-ruby ia-ruby-over">夏<rp>(</rp><rt>なつ</rt><rp>)</rp></ruby><ruby class="ia-ruby ia-ruby-over">秋<rp>(</rp><rt>あき</rt><rp>)</rp></ruby><ruby class="ia-ruby ia-ruby-over">冬<rp>(</rp><rt>ふゆ</rt><rp>)</rp></ruby>
-- `[振り仮名]^^(ふ り が な)` — identical characters auto-hidden (り→り omitted)
-    > <ruby class="ia-ruby ia-ruby-over">振<rp>(</rp><rt>ふ</rt><rp>)</rp></ruby><ruby class="ia-ruby ia-ruby-over">り<rp>(</rp><rt></rt><rp>)</rp></ruby><ruby class="ia-ruby ia-ruby-over">仮<rp>(</rp><rt>が</rt><rp>)</rp></ruby><ruby class="ia-ruby ia-ruby-over">名<rp>(</rp><rt>な</rt><rp>)</rp></ruby>
-
-#### Nested / Partially Overlapping Ruby
-- `[base]^^(over)^_(under)` — chained annotations
-    > <ruby class="ia-ruby ia-ruby-under ia-ruby-double" style="ruby-position:under"><ruby class="ia-ruby ia-ruby-over">base<rp>(</rp><rt>over</rt><rp>)</rp></ruby><rp>(</rp><rt>under</rt><rp>)</rp></ruby>
-- `[[護]^^(まも)れ]^_(プロテゴ)` — inner ruby + outer annotation on a larger span
-    > <ruby class="ia-ruby ia-ruby-under" style="ruby-position:under"><ruby class="ia-ruby ia-ruby-over">護<rp>(</rp><rt>まも</rt><rp>)</rp></ruby>れ<rp>(</rp><rt>プロテゴ</rt><rp>)</rp></ruby>
-
-#### Bouten & Line Marks
-- `base^^(..)` — bouten (emphasis dots) above
-    > <span class="ia-bouten ia-bouten-over" style="text-emphasis:filled dot;-webkit-text-emphasis:filled dot;text-emphasis-position:over right;-webkit-text-emphasis-position:over right">base</span>
-- `base^_(..)` — dotted underline
-    > <span class="ia-bouten ia-bouten-under" style="text-decoration:underline dotted;text-underline-offset:0.15em">base</span>
-- `base^^(.-)` — solid overline
-    > <span class="ia-overline" style="text-decoration-line:overline">base</span>
-- `base^_(.-)` — solid underline
-    > <span class="ia-underline" style="text-decoration-line:underline;text-underline-offset:0.15em">base</span>
-- `base^_(.=)` — double underline
-    > <span class="ia-underline ia-underline-double" style="text-decoration-line:underline;text-underline-offset:0.15em;text-decoration-style:double">base</span>
-- `base^_(.~)` — wavy underline
-    > <span class="ia-underline ia-underline-wavy" style="text-decoration-line:underline;text-underline-offset:0.15em;text-decoration-style:wavy">base</span>
-- `base^^(..)^_(..)` — two-levels
-    > <span class="ia-bouten ia-bouten-over ia-bouten-under" style="text-emphasis:filled dot;-webkit-text-emphasis:filled dot;text-emphasis-position:over right;-webkit-text-emphasis-position:over right;text-decoration:underline dotted;text-underline-offset:0.15em">base</span>
-
-### Macro Syntax (Logseq)
-
-Use macros when you need multiple ruby annotations on the same line (avoids Logseq parser conflicts):
-
-```
+```text
 {{renderer :ruby, 漢字, かんじ}}
-{{renderer :ruby, base, annotation, under}}
-{{renderer :ruby, 漢字, ..}}
+{{renderer :ruby, base, under, under}}
+{{renderer :ruby, 北京, ペキン|Beijing}}
 ```
 
-Recommended Logseq workflow:
+The plugin provides three slash commands for the current or selected blocks:
 
-- Use inline markup when the block has one annotation or when portable Markdown source matters.
-- Use `/Ruby → macro` on selected blocks when a Logseq block contains several `^^()` / `^_()` annotations.
-- Use `/Ruby → HTML (one-way)` when you want the rendered result to survive Logseq parsing exactly; this is one-way for per-character alignment and auto-hidden annotations.
+- `Ruby → markup`: convert macros or generated HTML back to Inline Annotation source.
+- `Ruby → macro`: convert source or generated HTML to editable Logseq macros.
+- `Ruby → HTML (one-way)`: convert macros or source to portable rendered HTML.
 
-## Use Cases
+Conversion protects inline and fenced code blocks.
 
-While the syntax originates from CJK furigana, it supports any interlinear annotation.
-Here are some interesting use cases:
+## Host Limitations
 
-**Furigana / phonetic guides**
-- `[取り返す]^^(と り かえ す)` – Japanese kanji → hiragana
-    > <ruby class="ia-ruby ia-ruby-over">取<rp>(</rp><rt>と</rt><rp>)</rp></ruby><ruby class="ia-ruby ia-ruby-over">り<rp>(</rp><rt></rt><rp>)</rp></ruby><ruby class="ia-ruby ia-ruby-over">返<rp>(</rp><rt>かえ</rt><rp>)</rp></ruby><ruby class="ia-ruby ia-ruby-over">す<rp>(</rp><rt></rt><rp>)</rp></ruby>
-- `[李太白]^^(Lǐ Tài Bái|ㄌㄧˇ ㄊㄞˋ ㄅㄞˊ)` — Chinese characters → pinyin/bopomofo
-    > <ruby class="ia-ruby ia-ruby-under ia-ruby-double" style="ruby-position:under"><ruby class="ia-ruby ia-ruby-over">李<rp>(</rp><rt>Lǐ</rt><rp>)</rp></ruby><rp>(</rp><rt>ㄌㄧˇ</rt><rp>)</rp></ruby><ruby class="ia-ruby ia-ruby-under ia-ruby-double" style="ruby-position:under"><ruby class="ia-ruby ia-ruby-over">太<rp>(</rp><rt>Tài</rt><rp>)</rp></ruby><rp>(</rp><rt>ㄊㄞˋ</rt><rp>)</rp></ruby><ruby class="ia-ruby ia-ruby-under ia-ruby-double" style="ruby-position:under"><ruby class="ia-ruby ia-ruby-over">白<rp>(</rp><rt>Bái</rt><rp>)</rp></ruby><rp>(</rp><rt>ㄅㄞˊ</rt><rp>)</rp></ruby>
+Logseq parses a block before plugins see it. Several `^^(...)` expressions in
+one bullet can therefore be interpreted as Logseq highlight syntax. This is a
+host conflict, not part of the Inline Annotation grammar. Use macros or the
+conversion commands when a block triggers it.
 
-N.B. Characters can be auto-aligned.
-Space-separate annotations to match base characters 1:1. Mismatched counts fall back to group ruby.
+Logseq may also remove a backslash before the plugin runs, so a literal escaped
+pipe can become a slot separator. Macro syntax is the reliable form for that
+case.
 
-**Translations**
-- `cat^^(chat|猫)` — English → French (over) + Chinese (under)
-    > <ruby class="ia-ruby ia-ruby-under ia-ruby-double" style="ruby-position:under"><ruby class="ia-ruby ia-ruby-over">cat<rp>(</rp><rt>chat</rt><rp>)</rp></ruby><rp>(</rp><rt>猫</rt><rp>)</rp></ruby>
-- `貓^^(猫)` — Traditional Chinese → Simplified Chinese
-    > <ruby class="ia-ruby ia-ruby-over">貓<rp>(</rp><rt>猫</rt><rp>)</rp></ruby>
-
-**Transcription / transliteration**
-- `猫^^(ねこ|neko)` — kanji → hiragana (over) + romaji (under)
-    > <ruby class="ia-ruby ia-ruby-under ia-ruby-double" style="ruby-position:under"><ruby class="ia-ruby ia-ruby-over">猫<rp>(</rp><rt>ねこ</rt><rp>)</rp></ruby><rp>(</rp><rt>neko</rt><rp>)</rp></ruby>
-- `貓^^(māo|cat)` — Chinese → pinyin (over) + English (under)
-    > <ruby class="ia-ruby ia-ruby-under ia-ruby-double" style="ruby-position:under"><ruby class="ia-ruby ia-ruby-over">貓<rp>(</rp><rt>māo</rt><rp>)</rp></ruby><rp>(</rp><rt>cat</rt><rp>)</rp></ruby>
-- `Москва^^(Moskva)` — Cyrillic → Latin
-    > <ruby class="ia-ruby ia-ruby-over">Москва<rp>(</rp><rt>Moskva</rt><rp>)</rp></ruby>
-- `cat^^(/kæt/)` — IPA transcription
-    > <ruby class="ia-ruby ia-ruby-over">cat<rp>(</rp><rt>/kæt/</rt><rp>)</rp></ruby>
-
-**Emphasis / study aids**
-- `重要^^(..)` — bouten dots for emphasis
-    > <span class="ia-bouten ia-bouten-over" style="text-emphasis:filled dot;-webkit-text-emphasis:filled dot;text-emphasis-position:over right;-webkit-text-emphasis-position:over right">重要</span>
-- `重要語句^^(じゅうようごく|.-)` — furigana above + underline for vocabulary study
-    > <ruby class="ia-ruby ia-ruby-mixed ia-ruby-over ia-underline" style="text-decoration-line:underline;text-underline-offset:0.15em">重要語句<rp>(</rp><rt>じゅうようごく</rt><rp>)</rp></ruby>
-
-**Title**
-- `[初音ミク^^(偉大なる|世界一姫様)]^_(Vocaloid)` – pile up titles around a name
-    > <ruby class="ia-ruby ia-ruby-under" style="ruby-position:under"><ruby class="ia-ruby ia-ruby-under ia-ruby-double" style="ruby-position:under"><ruby class="ia-ruby ia-ruby-over">初音ミク<rp>(</rp><rt>偉大なる</rt><rp>)</rp></ruby><rp>(</rp><rt>世界一姫様</rt><rp>)</rp></ruby><rp>(</rp><rt>Vocaloid</rt><rp>)</rp></ruby>
-
-## Conversion Commands
-
-Three conversion targets — works on **selected blocks** or current block:
-
-| Command | Description |
-|---------|-------------|
-| `/Ruby → markup` | Convert HTML / macros → `[base]^^(ann)` syntax |
-| `/Ruby → macro` | Convert markup / HTML → `{{renderer :ruby, …}}` |
-| `/Ruby → HTML (one-way)` | Convert markup / macros → raw `<ruby>` HTML (**one-way** — per-character alignment and auto-hide are baked in) |
-
-## Known Limitations (Logseq)
-
-> Logseq parses its own markdown **before** plugins run, and there is currently [no markdown post‑processor API](https://discuss.logseq.com/t/plugin-api-how-to-modify-the-way-markdown-is-render/17313/5).
-
-- **Multiple inline `^^()` / `^_()` in one block** - may be consumed by Logseq's built-in highlight (`^^text^^`) or italic (`_text_`) parser before this plugin sees the source. Use `/Ruby → macro` for editable Logseq-native content, or `/Ruby → HTML (one-way)` for fixed visual output.
-
-- **`\|` inside annotations** - Logseq strips the backslash first, so `\|` can become a bare `|` and be treated as a level separator. Use macro syntax when a literal pipe must be preserved in Logseq.
-
-The same inline source is still valid for the markdown-it package and future non-Logseq adapters. These limitations are Logseq host-parser behavior, not part of the Inline Annotation grammar.
-
-## Install (Manual)
-
-1. Download/clone this repo and run `pnpm build`
-2. In Logseq, **Settings → Advanced → Developer mode**
-3. Then install, **Plugins → Load unpacked plugin** → select this folder
+For rendered DOM, the plugin may join adjacent plain text nodes or
+attribute-free spans. It does not join across emphasis, highlight, links, code,
+or other semantic elements, because doing so would discard Logseq decoration.
+An expression fully contained inside one formatted run can still render.
 
 ## Development
 
 ```bash
 pnpm install
-pnpm dev      # HMR
-pnpm test     # vitest
-pnpm build    # dist/
+pnpm test
+pnpm build
+pnpm dev
 ```
 
-## Appendix: Operator Properties
+The test suite runs the shared HTML corpus, shared segment-boundary fixtures,
+Logseq conversion workflows, and parser-specific cases.
 
-`^^` and `^_` are **position-assignment operators** on a 2-slot system (over / under).
-Special patterns (`..`, `.-`, `.~`, `.=`) act as **rendering modifiers** — they change a slot from ruby annotation to CSS decoration (bouten or line marks). The operator chooses the side: over-slot line marks render as overlines, under-slot line marks render as underlines.
+For manual installation:
 
-**Commutativity** — chain order doesn’t matter; position is determined by the operator:
-- `[a]^^(x)^_(y)` ≡ `[a]^_(y)^^(x)`
+1. Run `pnpm build`.
+2. Enable Developer mode in Logseq under Settings → Advanced.
+3. Choose Plugins → Load unpacked plugin and select this folder.
 
-**Pipe equivalence** — pipe is compact notation for cross-operator chaining:
-- `[a]^^(x|y)` ≡ `[a]^^(x)^_(y)` ≡ `[a]^_(y)^^(x)`
-- `[漢字]^^(かんじ|.-)` ≡ `[漢字]^^(かんじ)^_(.-)` — ruby above + underline
+## Ecosystem
 
-**Idempotency of position** — same-operator chaining is rejected (each slot claimed once):
-- `[a]^^(x)^^(y)` — NOT chained; two separate expressions
-
-**Over-capacity stays visible** — when pipe saturates both slots, a chained operator renders through as literal text:
-- `[李太白]^^(り たい はく|Lǐ Tài Bái)^_(..)` — the `^_(..)` remains visible; pipe already fills both slots
-
-**Capacity** — max 2 levels (over + under) per base.
+- [Inline Annotation spec and markdown-it package](https://github.com/BaksiLi/markdown-it-inline-annotation)
+- [Inline Ruby Annotation for Obsidian](https://community.obsidian.md/plugins/inline-annotation)
+- [Inline Annotation for VS Code](https://marketplace.visualstudio.com/items?itemName=baksili.vscode-inline-annotation)
+- [Original proposal](https://blog.baksili.codes/markdown-ruby)
 
 ## License
 
-MIT — Baksi Li <<myself@baksili.codes>>
+MIT — Baksi Li

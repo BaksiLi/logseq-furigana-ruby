@@ -1,5 +1,6 @@
 import { describe, it, expect } from "vitest";
 import { hasRuby, rubyToHTML, renderMacroRuby, anyToMarkup, anyToMacro, anyToHTML, replaceRubyInElement } from "./parser";
+import segmentBoundaryCorpus from "./shared-segment-boundary-fixtures.json";
 import { htmlRenderFixtureCorpus, htmlRenderFixtures } from "./spec-fixtures";
 
 // ---------------------------------------------------------------------------
@@ -667,6 +668,49 @@ describe("Logseq host workflows", () => {
     expect(host.innerHTML).toContain("<rt>じ</rt>");
     expect(host.innerHTML).not.toContain("[字]^^(じ)");
   });
+
+  for (const fixture of segmentBoundaryCorpus.cases) {
+    it(`${fixture.id}: ${fixture.name}`, () => {
+      const host = document.createElement("p");
+      for (const run of fixture.runs) {
+        if (run.kind === "plain") {
+          host.append(document.createTextNode(run.text));
+          continue;
+        }
+        const tags = {
+          transparent: "span",
+          strong: "strong",
+          emphasis: "em",
+          mark: "mark",
+          link: "a",
+          code: "code",
+        } as const;
+        const element = document.createElement(tags[run.kind as keyof typeof tags]);
+        if (run.kind === "link") element.setAttribute("href", "https://example.com");
+        element.textContent = run.text;
+        host.append(element);
+      }
+
+      const source = fixture.runs.map((run) => run.text).join("");
+      replaceRubyInElement(host);
+
+      if (fixture.expectation === "must-preserve") {
+        expect(host.querySelector("ruby.ia-ruby")).toBeNull();
+        expect(host.textContent).toBe(source);
+        const semanticTags = { strong: "strong", emphasis: "em", mark: "mark", link: "a", code: "code" } as const;
+        for (const run of fixture.runs) {
+          if (!(run.kind in semanticTags)) continue;
+          const element = host.querySelector(semanticTags[run.kind as keyof typeof semanticTags]);
+          expect(element?.textContent).toBe(run.text);
+        }
+      } else {
+        expect(host.querySelector("ruby.ia-ruby")).not.toBeNull();
+      }
+      if (fixture.id === "boundary-single-formatted-run") {
+        expect(host.querySelector("strong > ruby.ia-ruby")).not.toBeNull();
+      }
+    });
+  }
 
   it("rubyToHTML does not reconsume generated HTML in same-op chains", () => {
     const result = rubyToHTML("[base]^^(a)^^(b)");

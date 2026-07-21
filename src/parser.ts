@@ -1092,8 +1092,50 @@ export function rubyHtmlToMarkup(html: string): string {
 
 const SKIP_TAGS = new Set(["CODE", "PRE", "A", "RUBY", "SCRIPT", "STYLE"]);
 
+function isInsideSkippedElement(element: Element, root: Element): boolean {
+  for (let current: Element | null = element; current; current = current.parentElement) {
+    if (SKIP_TAGS.has(current.tagName)) return true;
+    if (current === root) return false;
+  }
+  return false;
+}
+
+function hasOnlyTransparentDescendants(container: Element): boolean {
+  return Array.from(container.querySelectorAll("*")).every(
+    (element) => element.tagName === "SPAN" && element.attributes.length === 0
+  );
+}
+
+function replaceOneTransparentFragment(el: HTMLElement): boolean {
+  const candidates = [el, ...Array.from(el.querySelectorAll("*"))].reverse();
+  for (const container of candidates) {
+    if (isInsideSkippedElement(container, el) || !hasOnlyTransparentDescendants(container)) continue;
+    const textNodes: Text[] = [];
+    const walker = container.ownerDocument.createTreeWalker(container, NodeFilter.SHOW_TEXT);
+    while (walker.nextNode()) textNodes.push(walker.currentNode as Text);
+    if (textNodes.length <= 1) continue;
+
+    const source = container.textContent ?? "";
+    if (!hasRuby(source)) continue;
+    const html = rubyToHTML(source);
+    if (html === source) continue;
+
+    const temp = container.ownerDocument.createElement("span");
+    temp.innerHTML = html;
+    const fragment = container.ownerDocument.createDocumentFragment();
+    while (temp.firstChild) fragment.appendChild(temp.firstChild);
+    container.replaceChildren(fragment);
+    return true;
+  }
+  return false;
+}
+
 export function replaceRubyInElement(el: HTMLElement): void {
-  let anyReplaced = false;
+  while (replaceOneTransparentFragment(el)) {
+    // One transparent container can contain several expressions; repeat for
+    // independent transparent subtrees elsewhere in the block.
+  }
+
   const walk = (node: Node) => {
     if (node.nodeType === Node.ELEMENT_NODE) {
       if (SKIP_TAGS.has((node as Element).tagName)) return;
@@ -1104,44 +1146,18 @@ export function replaceRubyInElement(el: HTMLElement): void {
       const html = rubyToHTML(text);
       if (html === text) return;
 
-      const temp = document.createElement("span");
+      const ownerDocument = node.ownerDocument ?? el.ownerDocument;
+      const temp = ownerDocument.createElement("span");
       temp.innerHTML = html;
-      const frag = document.createDocumentFragment();
+      const frag = ownerDocument.createDocumentFragment();
       while (temp.firstChild) frag.appendChild(temp.firstChild);
       if (node.parentNode) node.parentNode.replaceChild(frag, node);
-      anyReplaced = true;
       return;
     }
     const children = Array.from(node.childNodes);
     for (const child of children) walk(child);
   };
   walk(el);
-
-  // innerHTML fallback for patterns split across DOM nodes by markdown
-  if (!anyReplaced || hasRuby(el.innerHTML)) {
-    const html = el.innerHTML;
-    if (!hasRuby(html)) return;
-
-    const protectRe = /<(code|pre|a|ruby|script|style)\b[\s\S]*?<\/\1>/gi;
-    const saved: string[] = [];
-    const tokenized = html.replace(protectRe, (match) => {
-      const idx = saved.length;
-      saved.push(match);
-      return `\x00PROTECT${idx}\x00`;
-    });
-
-    const converted = rubyToHTML(tokenized);
-    if (converted === tokenized) return;
-
-    let result = converted;
-    for (let idx = 0; idx < saved.length; idx++) {
-      result = result.split(`\x00PROTECT${idx}\x00`).join(saved[idx]);
-    }
-
-    if (result !== html) {
-      el.innerHTML = result;
-    }
-  }
 }
 
 // ---------------------------------------------------------------------------
