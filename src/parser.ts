@@ -9,7 +9,8 @@
  * - **Bouten**: `[漢字]^^(..)` / `[漢字]^_(..)` — emphasis dots
  * - **Both bouten**: `[漢字]^^(..)^_(..)` — dots above + below (ruby + text-emphasis)
  * - **Line marks**: `[base]^^(.-)` / `[base]^_(.-)` — overline/underline
- * - **Escapes**: `\|`, `\)`, `\]`, `\\` inside base/annotation
+ * - **Parentheses**: balanced literal parentheses inside annotations
+ * - **Escapes**: `\|`, `\(`, `\)`, `\]`, `\\` inside base/annotation
  *
  * Reference: https://blog.baksili.codes/markdown-ruby
  */
@@ -22,7 +23,7 @@ type RubyOp = "^^" | "^_";
 
 const OP_REGEX = /\^(?:\^|_)\(/g;
 const BOUTEN_PATTERN = "..";
-const ABBREVIATED_BOUNDARY_CHARS = "[]<>`*&!";
+const ABBREVIATED_BOUNDARY_CHARS = "[]()<>`*&!";
 const GENERATED_ANNOTATION_HTML_RE =
   /<(?:ruby|span)\b[^>]*\bclass=(?:"[^"]*\bia-(?:ruby|bouten|underline|overline)\b[^"]*"|'[^']*\bia-(?:ruby|bouten|underline|overline)\b[^']*')/i;
 
@@ -108,7 +109,7 @@ function escapeMarkupBase(input: string): string {
 }
 
 function escapeMarkupAnnotation(input: string): string {
-  return input.replace(/\\/g, "\\\\").replace(/\|/g, "\\|").replace(/\)/g, "\\)");
+  return input.replace(/\\/g, "\\\\").replace(/[|()]/g, "\\$&");
 }
 
 function escapeMarkupAnnotationLevels(levels: string[]): string {
@@ -167,9 +168,14 @@ function overflowAfterSecondUnescapedPipe(input: string): string {
 }
 
 function findCloseParen(input: string, start: number): number {
+  let depth = 0;
   for (let i = start; i < input.length; i++) {
     if (input[i] === "\n" || input[i] === "\r") return -1;
-    if (input[i] === ")" && !isEscaped(input, i)) return i;
+    if (input[i] === "(" && !isEscaped(input, i)) depth++;
+    if (input[i] === ")" && !isEscaped(input, i)) {
+      if (depth === 0) return i;
+      depth--;
+    }
   }
   return -1;
 }
@@ -514,8 +520,9 @@ function rubyToHTMLPass(input: string, allowRenderedBaseHtml: boolean): string {
     const annStart = opStart + 3;
     const annEnd = findCloseParen(input, annStart);
     if (annEnd < 0) {
-      out += input.slice(i);
-      break;
+      out += input.slice(i, opStart + 1);
+      i = opStart + 1;
+      continue;
     }
 
     const rawAnn = input.slice(annStart, annEnd);
@@ -813,8 +820,9 @@ function markupToMacro(input: string): string {
     const annStart = opStart + 3;
     const annEnd = findCloseParen(input, annStart);
     if (annEnd < 0) {
-      out += input.slice(i);
-      break;
+      out += input.slice(i, opStart + 1);
+      i = opStart + 1;
+      continue;
     }
 
     const rawAnn = input.slice(annStart, annEnd);

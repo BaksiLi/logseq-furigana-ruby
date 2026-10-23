@@ -4,6 +4,21 @@ All notable changes to this project are documented here. The format is based on
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and this project adheres
 to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.7.0]
+
+### Changed
+
+- Support the v2 balanced-parenthesis revision in rendering and macro
+  conversion, so `^^((semi-)formal artefact)` keeps the full gloss.
+- Escape both parentheses when converting macros or HTML back to markup.
+- Unbalanced annotation text stays literal; later valid annotations can still
+  render or convert.
+- **Source compatibility:** old right-only escaped output needs natural
+  balanced parentheses or both sides escaped.
+  Escape standalone left parentheses to preserve earlier first-close splits.
+- Verify release tags, run the test suite before packaging, and make GitHub
+  release uploads retryable.
+
 ## [0.6.2]
 
 ### Fixed

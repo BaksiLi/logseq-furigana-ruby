@@ -394,6 +394,111 @@ describe("rubyToHTML — escaping", () => {
   });
 });
 
+describe("annotation parentheses", () => {
+  const sentence =
+    "[[Cogitatum]] 可以完成從內容進入 [（半）形式的產物]^^((semi-)formal artefact) 轉譯。Point 可以來源於一段談話，但不必等於原話。";
+
+  it("renders the full reported sentence without truncating the gloss", () => {
+    expect(rubyToHTML(sentence)).toBe(
+      '[[Cogitatum]] 可以完成從內容進入 <ruby class="ia-ruby ia-ruby-over">（半）形式的產物<rp>(</rp><rt>(semi-)formal artefact</rt><rp>)</rp></ruby> 轉譯。Point 可以來源於一段談話，但不必等於原話。'
+    );
+  });
+
+  it("renders beside a host page link without changing the link", () => {
+    const host = document.createElement("p");
+    const link = document.createElement("a");
+    link.href = "#/page/Cogitatum";
+    link.textContent = "Cogitatum";
+    host.append(link, document.createTextNode(sentence.slice("[[Cogitatum]]".length)));
+
+    replaceRubyInElement(host);
+
+    expect(host.querySelector("a")).toBe(link);
+    expect(host.querySelectorAll("ruby.ia-ruby")).toHaveLength(1);
+    expect(host.querySelector("rt")?.textContent).toBe("(semi-)formal artefact");
+    expect(host.textContent).toContain(" 轉譯。Point 可以來源於一段談話，但不必等於原話。");
+  });
+
+  it("converts the full gloss to a macro and back to valid escaped markup", () => {
+    const macro =
+      "[[Cogitatum]] 可以完成從內容進入 {{renderer :ruby, （半）形式的產物, (semi-)formal artefact}} 轉譯。Point 可以來源於一段談話，但不必等於原話。";
+    expect(anyToMacro(sentence)).toBe(macro);
+    const markup = anyToMarkup(macro);
+    expect(markup).toContain(String.raw`^^(\(semi-\)formal artefact)`);
+    expect(anyToHTML(markup)).toBe(anyToHTML(sentence));
+  });
+
+  it.each(["^^", "^_"])("round-trips arbitrary parentheses through %s conversions", (op) => {
+    for (const raw of [
+      "(semi-)formal artefact",
+      "outer (inner (detail))",
+      String.raw`a\(b`,
+      String.raw`a\)b`,
+      String.raw`a\\(b)`,
+      String.raw`a\(b\|c\)`,
+    ]) {
+      const source = `[base]${op}(${raw})`;
+      const html = anyToHTML(source);
+      expect(html).toContain("<ruby");
+      const fromHtml = anyToMarkup(html);
+      const fromMacro = anyToMarkup(anyToMacro(source));
+      expect(anyToHTML(fromHtml)).toBe(html);
+      expect(anyToHTML(fromMacro)).toBe(html);
+    }
+  });
+
+  it("round-trips parenthetical pipe and chained levels", () => {
+    for (const source of [
+      "[base]^^((over)|(under))",
+      "[base]^_((under))^^((over))",
+      String.raw`[base]^^(a(b\|c))^_(under (detail))`,
+    ]) {
+      const html = anyToHTML(source);
+      expect(anyToHTML(anyToMarkup(html))).toBe(html);
+      expect(anyToHTML(anyToMacro(source))).toBe(html);
+    }
+  });
+
+  it("preserves unbalanced input instead of falling back to the first close", () => {
+    for (const source of ["[base]^^(a(b)", String.raw`[base]^^((semi-\)formal artefact)`]) {
+      expect(rubyToHTML(source)).toBe(source);
+      expect(anyToMacro(source)).toBe(source);
+    }
+  });
+
+  it("continues converting valid annotations after an unbalanced one", () => {
+    const prefix = "[bad]^^((oops) next ";
+    const source = `${prefix}[good]^^(ok)`;
+    expect(anyToMacro(source)).toBe(`${prefix}{{renderer :ruby, good, ok}}`);
+  });
+
+  it.each(["\n", "\r", "\r\n"])("rejects parentheses spanning %j", (newline) => {
+    for (const escape of ["", "\\"]) {
+      const source = `[base]^^((semi-${escape}${newline})formal)`;
+      expect(rubyToHTML(source)).toBe(source);
+      expect(anyToMacro(source)).toBe(source);
+    }
+  });
+
+  it("honors backslash parity and deep parenthesis nesting", () => {
+    expect(rubyToHTML(String.raw`[base]^^(a\\(b))`)).toContain("<rt>a\\(b)</rt>");
+    expect(rubyToHTML(String.raw`[base]^^(a\\\(b)tail`)).toContain("<rt>a\\(b</rt>");
+    const annotation = "(".repeat(256) + "text" + ")".repeat(256);
+    expect(rubyToHTML(`[base]^^(${annotation})`)).toContain(`<rt>${annotation}</rt>`);
+  });
+
+  it("does not absorb parentheses into an abbreviated base", () => {
+    expect(rubyToHTML("(base)^^(gloss)")).toBe("(base)^^(gloss)");
+    expect(anyToMacro("(base)^^(gloss)")).toBe("(base)^^(gloss)");
+  });
+
+  it("keeps code containing parenthetical annotations unchanged", () => {
+    const source = "`[base]^^((semi-)formal)`";
+    expect(anyToHTML(source)).toBe(source);
+    expect(anyToMacro(source)).toBe(source);
+  });
+});
+
 // ---------------------------------------------------------------------------
 // rubyToHTML — edge cases
 // ---------------------------------------------------------------------------

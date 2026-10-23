@@ -28,10 +28,20 @@ conversion commands.
 | `[base]^_(.-)` | solid underline |
 | `[base]^_(.~)` | wavy underline |
 | `[base]^_(.=)` | double underline |
+| `[artefact]^^((semi-)formal artefact)` | balanced parentheses inside a gloss |
 
-Escaped `\|`, `\)`, `\[`, and `\]` stay literal when the Logseq parser has not
+Escaped `\|`, `\(`, `\)`, `\[`, and `\]` stay literal when the Logseq parser has not
 already consumed the backslash. See the
 [full showcase](./assets/logseq_inline_annotation.md) for copyable examples.
+
+This v2 revision balances parentheses inside annotation text.
+Unbalanced input stays literal.
+Older converter output such as `[base]^^((semi-\)formal artefact)` needs either
+natural paired parentheses (`[base]^^((semi-)formal artefact)`) or both sides
+escaped (`[base]^^(\(semi-\)formal artefact)`).
+To preserve the old split of `[base]^^(a(b)c)`, write `[base]^^(a\(b)c)`.
+Conversion to markup now escapes both parentheses.
+The Logseq host limitations below still apply.
 
 ## Logseq Macros
 
@@ -78,6 +88,10 @@ pnpm dev
 
 The test suite runs the shared HTML corpus, shared segment-boundary fixtures,
 Logseq conversion workflows, and parser-specific cases.
+
+Pushing a `v<package-version>` tag tests and builds the plugin, then uploads
+`logseq-furigana-ruby.zip` to its GitHub release.
+The same tag can be used to retry the Publish Plugin workflow manually.
 
 For manual installation:
 
